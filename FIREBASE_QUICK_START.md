@@ -21,38 +21,121 @@
 5. Click "Enable"
 
 ### Step 3: Get Configuration (5 min)
-1. Click ⚙️ gear icon → "Project settings"
-2. Scroll to "Your apps" → Click **</>** icon
-3. App nickname: `Kids Meal Planner Web`
-4. Click "Register app"
-5. **COPY the firebaseConfig object!**
 
-6. Open `js/firebase-config.js`
-7. Replace placeholder config with your copied config
-8. Save file
+**Part A - Get your Firebase credentials:**
+1. In Firebase Console, click ⚙️ **gear icon** (top left) → "Project settings"
+2. Scroll down to "Your apps" section → Click the **</>** icon (web icon)
+3. App nickname: `Kids Meal Planner Web`
+4. **DON'T** check "Also set up Firebase Hosting" (not yet)
+5. Click "Register app"
+6. You'll see JavaScript code with a `firebaseConfig` object
+7. **SELECT AND COPY** this entire section:
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSyB1234567890abcdefgh",
+  authDomain: "kids-meal-planner.firebaseapp.com",
+  projectId: "kids-meal-planner",
+  storageBucket: "kids-meal-planner.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef123456"
+};
+```
+(Your values will be different - these are examples)
+
+**Part B - Update your code:**
+
+8. **Open `js/firebase-config.js` in a text/code editor:**
+   - **Windows**: Right-click `firebase-config.js` → "Open with" → Notepad (or VS Code)
+   - **Mac**: Right-click → "Open with" → TextEdit (or VS Code)
+   - **Linux**: Right-click → "Open with" → gedit (or VS Code)
+   - **Or use any code editor:** VS Code, Sublime Text, Atom, Notepad++, etc.
+
+9. **Find this section (around line 9-16):**
+```javascript
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "your-project-id.firebaseapp.com",
+    projectId: "your-project-id",
+    // ... more placeholder values
+};
+```
+
+10. **Replace** the entire `firebaseConfig = { ... }` object with what you copied from Firebase
+
+11. **Save the file** (Ctrl+S or Cmd+S)
+
+12. **You're done!** The file should now have your real Firebase credentials
 
 ---
 
 ## 🌱 Seed Database (3 min)
 
-1. Open `seed-database.html` in browser
-2. Click "🍎 Seed Food Items (57)"
-3. Click "🏗️ Seed Composite Items (3)"
-4. Click "✅ Verify Database"
-5. Should see green checkmarks!
+### How to Open seed-database.html:
+
+**Option 1 - Double-Click (Easiest):**
+1. Navigate to your project folder: `/home/user/webapp`
+2. Find the file `seed-database.html`
+3. Double-click it
+4. It will open in your default web browser
+
+**Option 2 - Drag to Browser:**
+1. Open your web browser (Chrome, Firefox, Safari, Edge)
+2. Navigate to your project folder: `/home/user/webapp`
+3. Drag `seed-database.html` into the browser window
+4. Drop it
+
+**Option 3 - Right-Click:**
+1. Navigate to your project folder: `/home/user/webapp`
+2. Right-click on `seed-database.html`
+3. Select "Open With" → Choose your browser
+4. File opens in browser
+
+**Option 4 - From Browser (File Menu):**
+1. Open your web browser
+2. Press `Ctrl+O` (Windows/Linux) or `Cmd+O` (Mac)
+3. Navigate to `/home/user/webapp/seed-database.html`
+4. Click "Open"
+
+### Once the page opens:
+You'll see a green page with big buttons:
+1. Click **"🍎 Seed Food Items (57)"** button
+2. Wait ~5 seconds, see green success message
+3. Click **"🏗️ Seed Composite Items (3)"** button
+4. Wait ~5 seconds, see green success message
+5. Click **"✅ Verify Database"** button
+6. Should see green checkmarks showing 57 food items and 3 composite items!
+
+**What you're seeing:** A black console area showing all the operations happening in real-time.
 
 ---
 
 ## 🎉 Test It! (2 min)
 
-1. Open `index.html` in browser
-2. Click "👤 Profile"
-3. Enter name and age
-4. Click "💾 Save Profile"
-5. Drag a food item to any day
-6. Wait 2 seconds (auto-save)
-7. Refresh page
-8. **If your meal is still there = SUCCESS!** 🎊
+### How to Open index.html (Your Main App):
+
+**Same 4 options as above:**
+- **Double-click** `index.html` in `/home/user/webapp`
+- **Drag** `index.html` into browser window
+- **Right-click** → "Open With" → Browser
+- **Browser File Menu** → `Ctrl+O` or `Cmd+O` → Select `index.html`
+
+### Once your app opens:
+You'll see the purple Kids' Meal Planner interface!
+
+**Now test it:**
+1. Click **"👤 Profile"** button (top right)
+2. Enter name (e.g., "Sarah") and age (e.g., 7)
+3. Pick an avatar emoji
+4. Click **"💾 Save Profile"**
+5. Should see: "👤 Profile saved! Welcome, Sarah!"
+6. Scroll down - you should now see colorful food items with emojis
+7. Click and **drag** a food item (like 🍗 Grilled Chicken)
+8. **Drop** it on any day (Monday through Friday)
+9. Wait 2-3 seconds (watch for console message: "💾 Auto-saved")
+10. **Refresh your browser** (F5 or Ctrl+R)
+11. **If your meal is still there = SUCCESS!** 🎊
+
+**What this proves:** Your app is connected to Firebase and saving data to the cloud!
 
 ---
 
