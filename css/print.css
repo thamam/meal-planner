@@ -1,0 +1,58 @@
+/* Print Styles for Shopping List */
+
+@media print {
+    /* Hide everything except shopping list */
+    body > *:not(#parentTab) {
+        display: none !important;
+    }
+    
+    #plannerTab,
+    .tab-button,
+    button {
+        display: none !important;
+    }
+    
+    #parentTab {
+        display: block !important;
+    }
+    
+    /* Show only shopping list section */
+    #weeklySummary,
+    #nutritionalInsights {
+        display: none !important;
+    }
+    
+    /* Reset background */
+    body {
+        background: white !important;
+        padding: 20px;
+    }
+    
+    /* Clean up shopping list for print */
+    #shoppingList {
+        page-break-inside: avoid;
+    }
+    
+    .bg-white,
+    .rounded-3xl,
+    .shadow-2xl {
+        box-shadow: none !important;
+        border: 1px solid #ccc;
+    }
+    
+    /* Add print header */
+    #shoppingList::before {
+        content: "🛒 Shopping List";
+        display: block;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #000;
+    }
+    
+    /* Checkboxes for print */
+    input[type="checkbox"] {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}

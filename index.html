@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍱 Kids' Meal Planner - Plan Your Yummy Week!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="css/print.css" rel="stylesheet" media="print">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .food-item {
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .food-item:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .food-item:active {
+            cursor: grabbing;
+        }
+        
+        .meal-slot {
+            min-height: 120px;
+            transition: all 0.3s;
+        }
+        
+        .meal-slot.drag-over {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            transform: scale(1.05);
+        }
+        
+        .health-meter {
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .health-fill {
+            height: 100%;
+            transition: width 0.5s ease, background 0.5s ease;
+        }
+        
+        .bounce {
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .avatar {
+            width: 120px;
+            height: 120px;
+            font-size: 80px;
+            transition: transform 0.3s;
+        }
+        
+        .avatar.happy {
+            animation: happy 0.5s;
+        }
+        
+        .avatar.sad {
+            animation: sad 0.5s;
+        }
+        
+        @keyframes happy {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2) rotate(10deg); }
+        }
+        
+        @keyframes sad {
+            0%, 100% { transform: scale(1); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .tab-button {
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* RTL Support for Hebrew */
+        [dir="rtl"] {
+            text-align: right;
+        }
+        
+        [dir="rtl"] .flex {
+            flex-direction: row-reverse;
+        }
+        
+        [dir="rtl"] .text-left {
+            text-align: right;
+        }
+        
+        [dir="rtl"] .text-right {
+            text-align: left;
+        }
+        
+        /* Language switcher buttons */
+        .lang-btn {
+            min-width: 80px;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="bg-white rounded-3xl shadow-2xl p-6 mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="text-6xl">🍱</div>
+                    <div>
+                        <h1 class="text-4xl font-bold text-purple-600">Kids' Meal Planner</h1>
+                        <p class="text-gray-600">Plan your yummy week!</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <!-- Language Switcher -->
+                    <div class="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
+                        <button onclick="switchLanguage('he')" id="langBtn-he" class="lang-btn px-3 py-1 rounded-full font-semibold transition bg-purple-500 text-white">
+                            🇮🇱 עברית
+                        </button>
+                        <button onclick="switchLanguage('en')" id="langBtn-en" class="lang-btn px-3 py-1 rounded-full font-semibold transition hover:bg-gray-200">
+                            🇺🇸 EN
+                        </button>
+                    </div>
+                    
+                    <!-- Avatar Display -->
+                    <div id="avatarDisplay" class="avatar text-center">😊</div>
+                    
+                    <!-- User Info -->
+                    <div id="userInfo" class="text-right hidden">
+                        <p class="text-lg font-semibold text-gray-800" id="userName">Guest</p>
+                        <p class="text-sm text-gray-500">Age <span id="userAge">6</span></p>
+                    </div>
+                    
+                    <!-- Profile Button -->
+                    <button onclick="showProfileModal()" class="bg-purple-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition" id="btnProfile">
+                        👤 Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation & Controls -->
+        <div class="bg-white rounded-3xl shadow-2xl p-4 mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="switchTab('planner')" class="tab-button active px-6 py-3 rounded-full font-semibold transition" id="tab-planner">
+                        📅 Meal Planner
+                    </button>
+                    <button onclick="switchTab('parent')" class="tab-button px-6 py-3 rounded-full font-semibold transition bg-purple-100 text-purple-600" id="tab-parent">
+                        👨‍👩‍👧 Parent View
+                    </button>
+                </div>
+                
+                <!-- NEW: Control Buttons -->
+                <div class="flex gap-2 flex-wrap">
+                    <button id="undoButton" onclick="undo()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full font-semibold transition text-gray-700" title="Undo (Ctrl+Z)" disabled>
+                        ↩️ Undo
+                    </button>
+                    <button id="soundToggle" onclick="Sounds.toggleSound()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full font-semibold transition" title="Toggle Sounds">
+                        🔊
+                    </button>
+                    <button id="musicToggle" onclick="Sounds.toggleMusic()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full font-semibold transition" title="Toggle Music" style="opacity: 0.5;">
+                        🎵
+                    </button>
+                    <button id="guidanceToggle" onclick="Guidance.toggleGuidance()" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full font-semibold transition" title="Toggle Guidance">
+                        💡
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Guidance Box -->
+        <div id="guidanceBox" class="bg-gradient-to-r from-yellow-400 to-orange-400 text-white rounded-3xl shadow-2xl p-6 mb-6 hidden">
+            <p class="text-xl font-bold text-center"></p>
+        </div>
+
+        <!-- Planner Tab -->
+        <div id="plannerTab" class="space-y-6">
+            
+            <!-- Health Meter -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">🌟 Health Meter</h2>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-600">Balance Score</p>
+                        <p class="text-3xl font-bold text-purple-600" id="healthScore">0%</p>
+                    </div>
+                </div>
+                <div class="health-meter bg-gray-200">
+                    <div id="healthFill" class="health-fill bg-red-400" style="width: 0%"></div>
+                </div>
+                <div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-sm">
+                    <div>
+                        <div class="text-2xl">🍗</div>
+                        <div class="font-semibold">Protein</div>
+                        <div id="proteinCount" class="text-purple-600">0</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl">🥦</div>
+                        <div class="font-semibold">Veggies</div>
+                        <div id="veggieCount" class="text-green-600">0</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl">🍎</div>
+                        <div class="font-semibold">Fruits</div>
+                        <div id="fruitCount" class="text-red-600">0</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl">🍞</div>
+                        <div class="font-semibold">Grains</div>
+                        <div id="grainCount" class="text-yellow-600">0</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl">🧀</div>
+                        <div class="font-semibold">Dairy</div>
+                        <div id="dairyCount" class="text-blue-600">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Food Palette -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4" id="foodPaletteTitle" data-i18n="foodPaletteTitle">🎨 Food Palette - Drag to Plan!</h2>
+                <div id="foodPalette">
+                    <!-- Categorized food items will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Weekly Meal Plan -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800" id="weeklyPlanTitle" data-i18n="weeklyPlanTitle">📅 Your Weekly Plan</h2>
+                    <div class="flex gap-2">
+                        <button onclick="saveMealPlan()" class="bg-green-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-green-600 transition flex items-center gap-2" id="btnSave">
+                            💾 Save
+                        </button>
+                        <button onclick="loadMealPlan()" class="bg-blue-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-blue-600 transition flex items-center gap-2" id="btnLoad">
+                            📂 Load
+                        </button>
+                        <button onclick="clearWeek()" class="bg-red-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-red-600 transition flex items-center gap-2" id="btnClear">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4" id="weeklyPlan">
+                    <!-- Days will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Parent Tab -->
+        <div id="parentTab" class="space-y-6 hidden">
+            
+            <!-- Parent Controls -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-gray-800" data-i18n="parentDashboard">👨‍👩‍👧 Parent Dashboard</h2>
+                    <button onclick="showParentSettings()" class="bg-purple-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition shadow-lg" id="btnParentSettings">
+                        ⚙️ Parent Settings
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Summary -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4" data-i18n="weeklySummaryTitle">📊 Weekly Summary</h2>
+                <div id="weeklySummary" class="space-y-4">
+                    <p class="text-gray-600" data-i18n="weeklySummaryEmpty">Plan meals for the week to see the summary here!</p>
+                </div>
+            </div>
+
+            <!-- Shopping List -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800" data-i18n="shoppingListTitle">🛒 Shopping List</h2>
+                    <div class="flex gap-2">
+                        <button onclick="generateShoppingList()" class="bg-purple-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-purple-600 transition" id="btnGenerateList">
+                            ✨ Generate List
+                        </button>
+                        <button onclick="printShoppingList()" class="bg-gray-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-gray-600 transition" id="btnPrint">
+                            🖨️ Print
+                        </button>
+                    </div>
+                </div>
+                <div id="shoppingList" class="space-y-2">
+                    <p class="text-gray-600" data-i18n="shoppingListEmpty">Generate shopping list from your meal plan!</p>
+                </div>
+            </div>
+
+            <!-- Nutritional Insights -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4" data-i18n="nutritionalInsightsTitle">💡 Nutritional Insights</h2>
+                <div id="nutritionalInsights" class="space-y-3">
+                    <p class="text-gray-600" data-i18n="insightsEmpty">Complete the meal plan to see insights!</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-3xl font-bold text-purple-600 mb-6">👤 Your Profile</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">What's your name?</label>
+                    <input type="text" id="profileName" class="w-full px-4 py-3 rounded-xl border-2 border-purple-200 focus:border-purple-500 outline-none" placeholder="Enter your name">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">How old are you?</label>
+                    <input type="number" id="profileAge" class="w-full px-4 py-3 rounded-xl border-2 border-purple-200 focus:border-purple-500 outline-none" placeholder="Enter your age" min="4" max="12">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Pick your avatar!</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button onclick="selectAvatar('😊')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">😊</button>
+                        <button onclick="selectAvatar('😎')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">😎</button>
+                        <button onclick="selectAvatar('🦁')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🦁</button>
+                        <button onclick="selectAvatar('🐼')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🐼</button>
+                        <button onclick="selectAvatar('🦄')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🦄</button>
+                        <button onclick="selectAvatar('🐶')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🐶</button>
+                        <button onclick="selectAvatar('🐱')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🐱</button>
+                        <button onclick="selectAvatar('🐻')" class="avatar-option text-5xl p-3 rounded-xl hover:bg-purple-100 transition">🐻</button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button onclick="saveProfile()" class="flex-1 bg-purple-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition">
+                        💾 Save Profile
+                    </button>
+                    <button onclick="closeProfileModal()" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-400 transition">
+                        ❌ Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen" class="fixed inset-0 bg-gradient-to-br from-purple-600 to-pink-600 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl mx-4 text-center">
+            <div class="text-8xl mb-4">🍱</div>
+            <h1 class="text-5xl font-bold text-purple-600 mb-4">Welcome!</h1>
+            <p class="text-2xl text-gray-700 mb-6">Let's plan some yummy meals together!</p>
+            
+            <div class="space-y-4 text-left bg-purple-50 rounded-2xl p-6 mb-6">
+                <div class="flex items-start gap-3">
+                    <span class="text-3xl">🎨</span>
+                    <div>
+                        <h3 class="font-bold text-lg">Drag & Drop</h3>
+                        <p class="text-gray-600">Pick food and drag it to any day!</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="text-3xl">🌟</span>
+                    <div>
+                        <h3 class="font-bold text-lg">Health Meter</h3>
+                        <p class="text-gray-600">Make it green with balanced meals!</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="text-3xl">💾</span>
+                    <div>
+                        <h3 class="font-bold text-lg">Save Your Work</h3>
+                        <p class="text-gray-600">Your plans are saved in the cloud!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="startPlanning()" class="bg-purple-500 text-white px-8 py-4 rounded-full text-xl font-bold hover:bg-purple-600 transition shadow-lg">
+                🚀 Let's Start Planning!
+            </button>
+        </div>
+    </div>
+
+    <!-- Composite Builder Modal -->
+    <div id="compositeBuilderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-3xl font-bold text-purple-600 mb-6" id="builderTitle">🥪 Build Your Meal</h2>
+            
+            <div id="builderSteps" class="space-y-6">
+                <!-- Steps will be generated dynamically -->
+            </div>
+            
+            <div class="mt-6 p-4 bg-purple-50 rounded-xl">
+                <h3 class="font-bold text-lg mb-2">Your Creation:</h3>
+                <div id="builderPreview" class="text-gray-600">
+                    Select options to see your meal...
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-6">
+                <button id="addCompositeButton" onclick="addCompositeToWeek()" class="flex-1 bg-purple-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition" disabled>
+                    ✨ Add to Plan
+                </button>
+                <button onclick="closeCompositeBuilder()" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-400 transition">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parent Settings Modal -->
+    <div id="parentSettingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-3xl font-bold text-purple-600 mb-6">⚙️ Parent Settings</h2>
+            
+            <div class="space-y-6">
+                <!-- Rules Section -->
+                <div class="border-2 border-purple-200 rounded-2xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">📋 Planning Rules</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
+                            <div>
+                                <p class="font-semibold">No duplicate items per day</p>
+                                <p class="text-sm text-gray-600">Encourages variety</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="rule-noDuplicates" class="sr-only peer" checked onchange="updateRule('noDuplicatesPerDay', this.checked)">
+                                <div class="w-14 h-8 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
+                            <div class="flex-1">
+                                <p class="font-semibold">Maximum items per day</p>
+                                <p class="text-sm text-gray-600">Prevents overplanning</p>
+                            </div>
+                            <input type="number" id="rule-maxItems" value="5" min="1" max="20" class="w-20 px-3 py-2 rounded-lg border-2 border-purple-200" onchange="updateRule('maxItemsPerDay', parseInt(this.value))">
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
+                            <div class="flex-1">
+                                <p class="font-semibold">Maximum treats per week</p>
+                                <p class="text-sm text-gray-600">Limits sweets/treats</p>
+                            </div>
+                            <input type="number" id="rule-maxSweets" value="2" min="0" max="7" class="w-20 px-3 py-2 rounded-lg border-2 border-purple-200" onchange="updateRule('maxSweetsPerWeek', parseInt(this.value))">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Custom Foods Section -->
+                <div class="border-2 border-green-200 rounded-2xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">🍽️ Custom Foods</h3>
+                    
+                    <div class="mb-4">
+                        <button onclick="showAddCustomFoodForm()" class="bg-green-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-green-600 transition">
+                            ➕ Add Custom Food
+                        </button>
+                    </div>
+                    
+                    <div id="customFoodsList" class="space-y-2">
+                        <p class="text-gray-600">No custom foods added yet.</p>
+                    </div>
+                </div>
+                
+                <!-- Food Management Section (NEW) -->
+                <div class="border-2 border-orange-200 rounded-2xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">🎯 Food Availability</h3>
+                    <p class="text-gray-600 mb-4">Enable or disable which foods are available to kids</p>
+                    
+                    <div class="mb-4 flex gap-2">
+                        <button onclick="toggleAllFoods(true)" class="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition text-sm">
+                            ✅ Enable All
+                        </button>
+                        <button onclick="toggleAllFoods(false)" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition text-sm">
+                            ❌ Disable All
+                        </button>
+                    </div>
+                    
+                    <!-- Category Tabs for Food Management -->
+                    <div class="flex gap-2 mb-4 overflow-x-auto">
+                        <button onclick="showFoodManagementCategory('all')" id="foodMgmt-tab-all" class="px-4 py-2 rounded-lg font-semibold transition bg-orange-500 text-white">
+                            All Foods
+                        </button>
+                        <button onclick="showFoodManagementCategory('protein')" id="foodMgmt-tab-protein" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🍗 Proteins
+                        </button>
+                        <button onclick="showFoodManagementCategory('veggie')" id="foodMgmt-tab-veggie" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🥦 Veggies
+                        </button>
+                        <button onclick="showFoodManagementCategory('fruit')" id="foodMgmt-tab-fruit" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🍎 Fruits
+                        </button>
+                        <button onclick="showFoodManagementCategory('grain')" id="foodMgmt-tab-grain" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🍞 Grains
+                        </button>
+                        <button onclick="showFoodManagementCategory('dairy')" id="foodMgmt-tab-dairy" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🧀 Dairy
+                        </button>
+                        <button onclick="showFoodManagementCategory('snack')" id="foodMgmt-tab-snack" class="px-4 py-2 rounded-lg font-semibold transition bg-gray-200 hover:bg-gray-300">
+                            🍿 Snacks
+                        </button>
+                    </div>
+                    
+                    <div id="foodManagementList" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Will be populated with food items with checkboxes -->
+                    </div>
+                </div>
+                
+                <!-- Composite Items Management Section (NEW) -->
+                <div class="border-2 border-pink-200 rounded-2xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">🏗️ Composite Food Builders</h3>
+                    <p class="text-gray-600 mb-4">Manage options for Sandwich, Pasta, and Salad builders</p>
+                    
+                    <div id="compositeManagementList" class="space-y-4">
+                        <!-- Will be populated with composite items -->
+                    </div>
+                </div>
+                
+                <!-- Food Limits Section -->
+                <div class="border-2 border-blue-200 rounded-2xl p-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">📊 Food Item Limits</h3>
+                    <p class="text-gray-600 mb-4">Set maximum times per week for specific foods (0 = unlimited)</p>
+                    
+                    <div id="foodLimitsList" class="space-y-2 max-h-64 overflow-y-auto">
+                        <!-- Will be populated with food items -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-6">
+                <button onclick="saveParentSettings()" class="flex-1 bg-purple-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-600 transition">
+                    💾 Save Settings
+                </button>
+                <button onclick="closeParentSettings()" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-400 transition">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Composite Options Modal (hidden initially) -->
+    <div id="editCompositeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-3xl font-bold text-pink-600 mb-6">🏗️ Edit Composite Builder</h2>
+            
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-2" id="editCompositeTitle"></h3>
+                <p class="text-gray-600 text-sm">Add or remove options for each step</p>
+            </div>
+            
+            <div id="editCompositeSteps" class="space-y-6">
+                <!-- Will be populated with steps and options -->
+            </div>
+            
+            <div class="flex gap-3 pt-6">
+                <button onclick="saveCompositeChanges()" class="flex-1 bg-pink-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-pink-600 transition">
+                    💾 Save Changes
+                </button>
+                <button onclick="closeEditCompositeModal()" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-400 transition">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Custom Food Form (hidden initially) -->
+    <div id="addCustomFoodForm" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold text-green-600 mb-6">➕ Add Custom Food</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Food Name</label>
+                    <input type="text" id="customFoodName" class="w-full px-4 py-3 rounded-xl border-2 border-green-200 focus:border-green-500 outline-none" placeholder="e.g., Quinoa Bowl">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Category</label>
+                    <select id="customFoodCategory" class="w-full px-4 py-3 rounded-xl border-2 border-green-200 focus:border-green-500 outline-none">
+                        <option value="protein">🍗 Protein</option>
+                        <option value="veggie">🥦 Vegetable</option>
+                        <option value="fruit">🍎 Fruit</option>
+                        <option value="grain">🍞 Grain</option>
+                        <option value="dairy">🧀 Dairy</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Icon (Emoji)</label>
+                    <input type="text" id="customFoodIcon" class="w-full px-4 py-3 rounded-xl border-2 border-green-200 focus:border-green-500 outline-none text-center text-4xl" placeholder="🍽️" maxlength="2">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Weekly Limit (0 = unlimited)</label>
+                    <input type="number" id="customFoodLimit" class="w-full px-4 py-3 rounded-xl border-2 border-green-200 focus:border-green-500 outline-none" value="0" min="0" max="7">
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="customFoodSweet" class="w-5 h-5 text-green-600 rounded">
+                    <label for="customFoodSweet" class="text-gray-700">This is a treat/sweet</label>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-6">
+                <button onclick="saveCustomFood()" class="flex-1 bg-green-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-green-600 transition">
+                    ✅ Add Food
+                </button>
+                <button onclick="closeAddCustomFoodForm()" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-400 transition">
+                    ❌ Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load modules first -->
+    <script src="js/modules/i18n.js"></script>
+    <script src="js/modules/autosave-undo.js"></script>
+    <script src="js/modules/rules.js"></script>
+    <script src="js/modules/sounds.js"></script>
+    <script src="js/modules/guidance.js"></script>
+    <script src="js/modules/categorized-view.js"></script>
+    
+    <!-- Then load main app -->
+    <script src="js/app.js"></script>
+</body>
+</html>

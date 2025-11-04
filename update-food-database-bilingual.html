@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Food Database (Bilingual)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-purple-600 mb-6">🍱 Update Food Database (Hebrew + English)</h1>
+        
+        <div class="mb-6 space-y-2">
+            <button onclick="updateDatabase()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition">
+                🚀 Update Database with Bilingual Data
+            </button>
+            <button onclick="clearDatabase()" class="bg-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-600 transition ml-2">
+                🗑️ Clear Old Data First
+            </button>
+            <p class="text-sm text-gray-600 mt-2">⚠️ Important: Click "Clear Old Data First" before updating to avoid duplicates</p>
+        </div>
+        
+        <div id="status" class="bg-gray-50 p-4 rounded-lg border-2 border-gray-200 min-h-[400px] font-mono text-sm overflow-auto">
+            <p class="text-gray-600">Ready to update database with bilingual food items...</p>
+            <p class="text-gray-600">This will import 57 items with both English and Hebrew names from kids_breakfast_box_defaults_bilingual.csv</p>
+        </div>
+    </div>
+
+    <script>
+        // Bilingual CSV data parsed from kids_breakfast_box_defaults_bilingual.csv
+        const bilingualFoodData = [
+            // BASES / בסיסים
+            {name: "Sliced bread", name_he: "לחם פרוס", category: "grain", icon: "🍞", subcategory: "Bread", weekly_limit: 0, is_sweet: false},
+            {name: "Mini roll", name_he: "לחמנייה מיני", category: "grain", icon: "🥖", subcategory: "Bread", weekly_limit: 0, is_sweet: false},
+            {name: "Tortilla", name_he: "טורטייה", category: "grain", icon: "🌯", subcategory: "Flatbread", weekly_limit: 0, is_sweet: false},
+            {name: "Whole-grain crackers", name_he: "קרקרים מלאים", category: "grain", icon: "🍘", subcategory: "Crackers", weekly_limit: 0, is_sweet: false},
+            {name: "Mini bagel", name_he: "בייגל מיני", category: "grain", icon: "🥯", subcategory: "Bread", weekly_limit: 0, is_sweet: false},
+            
+            // PROTEINS / חלבון
+            {name: "Hard-boiled egg", name_he: "ביצה קשה", category: "protein", icon: "🥚", subcategory: "Eggs", weekly_limit: 0, is_sweet: false},
+            {name: "Egg omelette strips", name_he: "רצועות חביתה", category: "protein", icon: "🍳", subcategory: "Eggs", weekly_limit: 0, is_sweet: false},
+            {name: "Turkey slices", name_he: "פרוסות הודו", category: "protein", icon: "🦃", subcategory: "Poultry", weekly_limit: 3, is_sweet: false},
+            {name: "Chicken schnitzel strips", name_he: "Chicken schnitzel strips", category: "protein", icon: "🍗", subcategory: "Poultry", weekly_limit: 2, is_sweet: false},
+            {name: "Roasted chickpeas", name_he: "Roasted chickpeas", category: "protein", icon: "🫘", subcategory: "Legumes", weekly_limit: 0, is_sweet: false},
+            {name: "Cheese slices", name_he: "פרוסות גבינה", category: "dairy", icon: "🧀", subcategory: "Dairy", weekly_limit: 0, is_sweet: false},
+            {name: "String cheese", name_he: "מקל גבינה", category: "dairy", icon: "🧀", subcategory: "Dairy", weekly_limit: 0, is_sweet: false},
+            {name: "Cottage cheese", name_he: "קוטג'", category: "dairy", icon: "🥛", subcategory: "Dairy", weekly_limit: 0, is_sweet: false},
+            {name: "Labneh", name_he: "לאבנה", category: "dairy", icon: "🥛", subcategory: "Dairy", weekly_limit: 0, is_sweet: false},
+            {name: "Almond butter", name_he: "Almond butter", category: "protein", icon: "🥜", subcategory: "Nut butter", weekly_limit: 0, is_sweet: false},
+            {name: "Sunflower seed butter", name_he: "ממרח גרעיני חמנייה", category: "protein", icon: "🌻", subcategory: "Seed butter", weekly_limit: 0, is_sweet: false},
+            
+            // FRUITS / פירות
+            {name: "Apple slices", name_he: "פלחי תפוח", category: "fruit", icon: "🍎", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Banana", name_he: "בננה", category: "fruit", icon: "🍌", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Grapes", name_he: "ענבים", category: "fruit", icon: "🍇", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Clementine", name_he: "קלמנטינה", category: "fruit", icon: "🍊", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Pear slices", name_he: "פלחי אגס", category: "fruit", icon: "🍐", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Strawberries", name_he: "תותים", category: "fruit", icon: "🍓", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Blueberries", name_he: "אוכמניות", category: "fruit", icon: "🫐", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Melon cubes", name_he: "קוביות מלון", category: "fruit", icon: "🍈", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Pineapple chunks", name_he: "חתיכות אננס", category: "fruit", icon: "🍍", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Dates (Medjool)", name_he: "Dates (Medjool)", category: "fruit", icon: "🟫", subcategory: "Dried", weekly_limit: 2, is_sweet: true},
+            
+            // VEGGIES / ירקות
+            {name: "Cucumber sticks", name_he: "מקלות מלפפון", category: "veggie", icon: "🥒", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Cherry tomatoes", name_he: "עגבניות שרי", category: "veggie", icon: "🍅", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Carrot sticks", name_he: "מקלות גזר", category: "veggie", icon: "🥕", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Bell pepper strips", name_he: "רצועות פלפל", category: "veggie", icon: "🫑", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Sugar snap peas", name_he: "אפונת סנאפ", category: "veggie", icon: "🫛", subcategory: "Fresh", weekly_limit: 0, is_sweet: false},
+            {name: "Olives (pitted)", name_he: "Olives (pitted)", category: "veggie", icon: "🫒", subcategory: "Pickled", weekly_limit: 0, is_sweet: false},
+            {name: "Pickle spears", name_he: "מקלות חמוצים", category: "veggie", icon: "🥒", subcategory: "Pickled", weekly_limit: 0, is_sweet: false},
+            
+            // DAIRY / מוצרי חלב (Yogurt)
+            {name: "Plain yogurt cup", name_he: "גביע יוגורט טבעי", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false},
+            {name: "Drinking yogurt", name_he: "Drinking yogurt", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false},
+            {name: "Kefir", name_he: "קפיר", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false},
+            
+            // SPREADS / ממרחים
+            {name: "Avocado mash", name_he: "ממרח אבוקדו", category: "veggie", icon: "🥑", subcategory: "Spread", weekly_limit: 0, is_sweet: false},
+            {name: "Cream cheese", name_he: "גבינת שמנת", category: "dairy", icon: "🧈", subcategory: "Spread", weekly_limit: 0, is_sweet: false},
+            {name: "Honey drizzle", name_he: "Honey drizzle", category: "grain", icon: "🍯", subcategory: "Sweetener", weekly_limit: 2, is_sweet: true},
+            {name: "Date spread (silan)", name_he: "Date spread (silan)", category: "grain", icon: "🍯", subcategory: "Sweetener", weekly_limit: 2, is_sweet: true},
+            {name: "Butter", name_he: "חמאה", category: "dairy", icon: "🧈", subcategory: "Fat", weekly_limit: 0, is_sweet: false},
+            
+            // COMBOS / שילובים
+            {name: "Bread + Yellow cheese + Tomato", name_he: "לחם + גבינה צהובה + עגבנייה", category: "grain", icon: "🥪", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            {name: "Tortilla + Turkey + Lettuce", name_he: "טורטייה + Turkey + Lettuce", category: "grain", icon: "🌯", subcategory: "Wrap", weekly_limit: 3, is_sweet: false},
+            {name: "Bagel + Cream cheese", name_he: "Bagel + גבינת שמנת", category: "grain", icon: "🥯", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            {name: "Bread + Avocado + Egg", name_he: "לחם + אבוקדו + ביצה", category: "grain", icon: "🥪", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            {name: "Pita + Labneh + Olive", name_he: "פיתה + לאבנה + Olive", category: "grain", icon: "🫓", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            {name: "Pita with za'atar (sesame)", name_he: "פיתה with za'atar (contains sesame)", category: "grain", icon: "🫓", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            {name: "Pita + olive oil + sumac", name_he: "פיתה + olive oil + sumac (no sesame)", category: "grain", icon: "🫓", subcategory: "Sandwich", weekly_limit: 0, is_sweet: false},
+            
+            // SNACKS / חטיפים
+            {name: "Plain pretzels", name_he: "בייגלה", category: "snack", icon: "🥨", subcategory: "Baked", weekly_limit: 2, is_sweet: false},
+            {name: "Air-popped popcorn", name_he: "פופקורן ללא שמן", category: "snack", icon: "🍿", subcategory: "Baked", weekly_limit: 2, is_sweet: false},
+            {name: "Granola bar", name_he: "Granola bar", category: "snack", icon: "🍫", subcategory: "Packaged", weekly_limit: 2, is_sweet: true},
+            {name: "Rice crackers (GF)", name_he: "Rice crackers (GF)", category: "snack", icon: "🍘", subcategory: "Crackers", weekly_limit: 2, is_sweet: false},
+            
+            // TREATS / מתוקים
+            {name: "Mini homemade muffin", name_he: "מאפין מיני ביתי", category: "snack", icon: "🧁", subcategory: "Baked", weekly_limit: 2, is_sweet: true},
+            {name: "Dark chocolate square", name_he: "Dark chocolate square", category: "snack", icon: "🍫", subcategory: "Chocolate", weekly_limit: 1, is_sweet: true},
+            
+            // DRINKS / שתייה
+            {name: "Water", name_he: "מים", category: "grain", icon: "💧", subcategory: "Drink", weekly_limit: 0, is_sweet: false},
+            {name: "Milk box", name_he: "חלב בקופסה", category: "dairy", icon: "🥛", subcategory: "Drink", weekly_limit: 0, is_sweet: false},
+            {name: "100% fruit juice", name_he: "100% fruit juice", category: "fruit", icon: "🧃", subcategory: "Drink", weekly_limit: 2, is_sweet: true},
+        ];
+
+        function log(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                error: 'text-red-600',
+                warning: 'text-yellow-600'
+            };
+            statusDiv.innerHTML += `<p class="${colors[type]}">${message}</p>`;
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+
+        async function clearDatabase() {
+            if (!confirm('⚠️ This will DELETE all existing food items! Are you sure?')) {
+                return;
+            }
+            
+            log('🗑️ Starting database clear...', 'warning');
+            
+            try {
+                // Get all existing food items
+                const response = await fetch('tables/food_items?limit=200');
+                const data = await response.json();
+                
+                if (!data.data || data.data.length === 0) {
+                    log('✅ No items to delete', 'success');
+                    return;
+                }
+                
+                log(`Found ${data.data.length} items to delete`, 'info');
+                
+                // Delete each item
+                let deleted = 0;
+                for (const item of data.data) {
+                    try {
+                        await fetch(`tables/food_items/${item.id}`, {
+                            method: 'DELETE'
+                        });
+                        deleted++;
+                        log(`Deleted: ${item.name} / ${item.name_he || 'N/A'} (${deleted}/${data.data.length})`, 'info');
+                    } catch (e) {
+                        log(`Error deleting ${item.name}: ${e.message}`, 'error');
+                    }
+                }
+                
+                log(`✅ Cleared ${deleted} items from database`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error clearing database: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateDatabase() {
+            log('🚀 Starting bilingual database update...', 'info');
+            log(`📊 Processing ${bilingualFoodData.length} food items (English + Hebrew)`, 'info');
+            
+            let added = 0;
+            let errors = 0;
+            
+            for (const food of bilingualFoodData) {
+                try {
+                    const foodItem = {
+                        name: food.name,
+                        name_he: food.name_he,  // Hebrew name
+                        category: food.category,
+                        icon: food.icon,
+                        ingredients: JSON.stringify([food.name.toLowerCase()]),
+                        weekly_limit: food.weekly_limit || 0,
+                        is_sweet: food.is_sweet || false,
+                        nutrition_score: calculateNutritionScore(food)
+                    };
+                    
+                    const response = await fetch('tables/food_items', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(foodItem)
+                    });
+                    
+                    if (response.ok) {
+                        added++;
+                        log(`✅ Added: ${food.name} / ${food.name_he} (${food.category}) [${added}/${bilingualFoodData.length}]`, 'success');
+                    } else {
+                        errors++;
+                        const errorText = await response.text();
+                        log(`❌ Failed to add: ${food.name} - ${errorText}`, 'error');
+                    }
+                    
+                    // Small delay to avoid overwhelming the API
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    errors++;
+                    log(`❌ Error adding ${food.name}: ${error.message}`, 'error');
+                }
+            }
+            
+            log('', 'info');
+            log('═══════════════════════════════════', 'info');
+            log(`🎉 Bilingual Database Update Complete!`, 'success');
+            log(`✅ Successfully added: ${added} items`, 'success');
+            log(`❌ Errors: ${errors} items`, errors > 0 ? 'error' : 'success');
+            log('═══════════════════════════════════', 'info');
+            log('', 'info');
+            log('💡 Next steps:', 'info');
+            log('1. Refresh index.html to see bilingual food items', 'info');
+            log('2. Toggle language (🇮🇱 עברית / 🇺🇸 EN) to test Hebrew names', 'info');
+            log('3. Check that all categories have items', 'info');
+            log('4. Verify food names switch when changing language', 'info');
+        }
+
+        function calculateNutritionScore(food) {
+            // Assign scores based on category and type
+            const scores = {
+                veggie: 5,
+                fruit: 5,
+                protein: 4,
+                dairy: 4,
+                grain: 3,
+                snack: 2
+            };
+            
+            let score = scores[food.category] || 3;
+            
+            // Reduce score for sweet items
+            if (food.is_sweet) {
+                score = Math.max(1, score - 1);
+            }
+            
+            return score;
+        }
+    </script>
+</body>
+</html>

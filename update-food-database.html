@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Food Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-purple-600 mb-6">🍱 Update Food Database from CSV</h1>
+        
+        <div class="mb-6">
+            <button onclick="updateDatabase()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-600 transition">
+                🚀 Update Database
+            </button>
+            <button onclick="clearDatabase()" class="bg-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-600 transition ml-2">
+                🗑️ Clear Old Data First
+            </button>
+        </div>
+        
+        <div id="status" class="bg-gray-50 p-4 rounded-lg border-2 border-gray-200 min-h-[400px] font-mono text-sm overflow-auto">
+            <p class="text-gray-600">Ready to update database...</p>
+        </div>
+    </div>
+
+    <script>
+        // CSV data embedded (parsed from kids_breakfast_box_defaults_updated.csv)
+        const foodData = [
+            // BASES (Grain category)
+            {name: "Sliced bread", category: "grain", icon: "🍞", subcategory: "Bread", weekly_limit: 0, is_sweet: false, ingredients: ["wheat bread"]},
+            {name: "Mini roll", category: "grain", icon: "🥖", subcategory: "Bread", weekly_limit: 0, is_sweet: false, ingredients: ["roll"]},
+            {name: "Tortilla", category: "grain", icon: "🌯", subcategory: "Flatbread", weekly_limit: 0, is_sweet: false, ingredients: ["tortilla"]},
+            {name: "Whole-grain crackers", category: "grain", icon: "🍘", subcategory: "Crackers", weekly_limit: 0, is_sweet: false, ingredients: ["crackers"]},
+            {name: "Mini bagel", category: "grain", icon: "🥯", subcategory: "Bread", weekly_limit: 0, is_sweet: false, ingredients: ["bagel"]},
+            
+            // PROTEINS
+            {name: "Hard-boiled egg", category: "protein", icon: "🥚", subcategory: "Eggs", weekly_limit: 0, is_sweet: false, ingredients: ["egg"]},
+            {name: "Egg omelette strips", category: "protein", icon: "🍳", subcategory: "Eggs", weekly_limit: 0, is_sweet: false, ingredients: ["egg", "herbs"]},
+            {name: "Turkey slices", category: "protein", icon: "🦃", subcategory: "Poultry", weekly_limit: 3, is_sweet: false, ingredients: ["turkey"]},
+            {name: "Chicken schnitzel strips", category: "protein", icon: "🍗", subcategory: "Poultry", weekly_limit: 2, is_sweet: false, ingredients: ["chicken", "breadcrumbs"]},
+            {name: "Roasted chickpeas", category: "protein", icon: "🫘", subcategory: "Legumes", weekly_limit: 0, is_sweet: false, ingredients: ["chickpeas"]},
+            {name: "Cheese slices", category: "dairy", icon: "🧀", subcategory: "Dairy", weekly_limit: 0, is_sweet: false, ingredients: ["cheese"]},
+            {name: "String cheese", category: "dairy", icon: "🧀", subcategory: "Dairy", weekly_limit: 0, is_sweet: false, ingredients: ["mozzarella"]},
+            {name: "Cottage cheese", category: "dairy", icon: "🥛", subcategory: "Dairy", weekly_limit: 0, is_sweet: false, ingredients: ["cottage cheese"]},
+            {name: "Labneh", category: "dairy", icon: "🥛", subcategory: "Dairy", weekly_limit: 0, is_sweet: false, ingredients: ["labneh", "yogurt"]},
+            {name: "Almond butter", category: "protein", icon: "🥜", subcategory: "Nut butter", weekly_limit: 0, is_sweet: false, ingredients: ["almonds"]},
+            {name: "Sunflower seed butter", category: "protein", icon: "🌻", subcategory: "Seed butter", weekly_limit: 0, is_sweet: false, ingredients: ["sunflower seeds"]},
+            
+            // FRUITS
+            {name: "Apple slices", category: "fruit", icon: "🍎", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["apple"]},
+            {name: "Banana", category: "fruit", icon: "🍌", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["banana"]},
+            {name: "Grapes", category: "fruit", icon: "🍇", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["grapes"]},
+            {name: "Clementine", category: "fruit", icon: "🍊", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["clementine"]},
+            {name: "Pear slices", category: "fruit", icon: "🍐", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["pear"]},
+            {name: "Strawberries", category: "fruit", icon: "🍓", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["strawberries"]},
+            {name: "Blueberries", category: "fruit", icon: "🫐", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["blueberries"]},
+            {name: "Melon cubes", category: "fruit", icon: "🍈", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["melon"]},
+            {name: "Pineapple chunks", category: "fruit", icon: "🍍", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["pineapple"]},
+            {name: "Dates (Medjool)", category: "fruit", icon: "🟫", subcategory: "Dried", weekly_limit: 2, is_sweet: true, ingredients: ["dates"]},
+            
+            // VEGGIES
+            {name: "Cucumber sticks", category: "veggie", icon: "🥒", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["cucumber"]},
+            {name: "Cherry tomatoes", category: "veggie", icon: "🍅", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["tomatoes"]},
+            {name: "Carrot sticks", category: "veggie", icon: "🥕", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["carrots"]},
+            {name: "Bell pepper strips", category: "veggie", icon: "🫑", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["bell pepper"]},
+            {name: "Sugar snap peas", category: "veggie", icon: "🫛", subcategory: "Fresh", weekly_limit: 0, is_sweet: false, ingredients: ["snap peas"]},
+            {name: "Olives (pitted)", category: "veggie", icon: "🫒", subcategory: "Pickled", weekly_limit: 0, is_sweet: false, ingredients: ["olives"]},
+            {name: "Pickle spears", category: "veggie", icon: "🥒", subcategory: "Pickled", weekly_limit: 0, is_sweet: false, ingredients: ["pickles"]},
+            
+            // DAIRY (Yogurt)
+            {name: "Plain yogurt cup", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false, ingredients: ["yogurt"]},
+            {name: "Drinking yogurt", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false, ingredients: ["yogurt"]},
+            {name: "Kefir", category: "dairy", icon: "🥛", subcategory: "Yogurt", weekly_limit: 0, is_sweet: false, ingredients: ["kefir"]},
+            
+            // SPREADS (categorize as protein/dairy/grain depending on use)
+            {name: "Avocado mash", category: "veggie", icon: "🥑", subcategory: "Spread", weekly_limit: 0, is_sweet: false, ingredients: ["avocado", "lemon", "salt"]},
+            {name: "Cream cheese", category: "dairy", icon: "🧈", subcategory: "Spread", weekly_limit: 0, is_sweet: false, ingredients: ["cream cheese"]},
+            {name: "Honey drizzle", category: "grain", icon: "🍯", subcategory: "Sweetener", weekly_limit: 2, is_sweet: true, ingredients: ["honey"]},
+            {name: "Date spread (silan)", category: "grain", icon: "🍯", subcategory: "Sweetener", weekly_limit: 2, is_sweet: true, ingredients: ["date spread"]},
+            {name: "Butter", category: "dairy", icon: "🧈", subcategory: "Fat", weekly_limit: 0, is_sweet: false, ingredients: ["butter"]},
+            
+            // SNACKS (new snack category with 2/week limit)
+            {name: "Plain pretzels", category: "snack", icon: "🥨", subcategory: "Baked", weekly_limit: 2, is_sweet: false, ingredients: ["pretzels"]},
+            {name: "Air-popped popcorn", category: "snack", icon: "🍿", subcategory: "Baked", weekly_limit: 2, is_sweet: false, ingredients: ["popcorn"]},
+            {name: "Granola bar", category: "snack", icon: "🍫", subcategory: "Packaged", weekly_limit: 2, is_sweet: true, ingredients: ["oats", "nuts", "honey"]},
+            {name: "Rice crackers (GF)", category: "snack", icon: "🍘", subcategory: "Crackers", weekly_limit: 2, is_sweet: false, ingredients: ["rice"]},
+            
+            // TREATS (sweet snacks)
+            {name: "Mini homemade muffin", category: "snack", icon: "🧁", subcategory: "Baked", weekly_limit: 2, is_sweet: true, ingredients: ["flour", "banana", "oats"]},
+            {name: "Dark chocolate square", category: "snack", icon: "🍫", subcategory: "Chocolate", weekly_limit: 1, is_sweet: true, ingredients: ["chocolate"]},
+        ];
+
+        function log(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                error: 'text-red-600',
+                warning: 'text-yellow-600'
+            };
+            statusDiv.innerHTML += `<p class="${colors[type]}">${message}</p>`;
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+
+        async function clearDatabase() {
+            if (!confirm('⚠️ This will DELETE all existing food items! Are you sure?')) {
+                return;
+            }
+            
+            log('🗑️ Starting database clear...', 'warning');
+            
+            try {
+                // Get all existing food items
+                const response = await fetch('tables/food_items?limit=200');
+                const data = await response.json();
+                
+                if (!data.data || data.data.length === 0) {
+                    log('✅ No items to delete', 'success');
+                    return;
+                }
+                
+                log(`Found ${data.data.length} items to delete`, 'info');
+                
+                // Delete each item
+                let deleted = 0;
+                for (const item of data.data) {
+                    try {
+                        await fetch(`tables/food_items/${item.id}`, {
+                            method: 'DELETE'
+                        });
+                        deleted++;
+                        log(`Deleted: ${item.name} (${deleted}/${data.data.length})`, 'info');
+                    } catch (e) {
+                        log(`Error deleting ${item.name}: ${e.message}`, 'error');
+                    }
+                }
+                
+                log(`✅ Cleared ${deleted} items from database`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error clearing database: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateDatabase() {
+            log('🚀 Starting database update...', 'info');
+            log(`📊 Processing ${foodData.length} food items from CSV`, 'info');
+            
+            let added = 0;
+            let errors = 0;
+            
+            for (const food of foodData) {
+                try {
+                    const foodItem = {
+                        name: food.name,
+                        category: food.category,
+                        icon: food.icon,
+                        ingredients: JSON.stringify(food.ingredients),
+                        weekly_limit: food.weekly_limit || 0,
+                        is_sweet: food.is_sweet || false,
+                        nutrition_score: calculateNutritionScore(food)
+                    };
+                    
+                    const response = await fetch('tables/food_items', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(foodItem)
+                    });
+                    
+                    if (response.ok) {
+                        added++;
+                        log(`✅ Added: ${food.name} (${food.category}) [${added}/${foodData.length}]`, 'success');
+                    } else {
+                        errors++;
+                        log(`❌ Failed to add: ${food.name}`, 'error');
+                    }
+                    
+                    // Small delay to avoid overwhelming the API
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    errors++;
+                    log(`❌ Error adding ${food.name}: ${error.message}`, 'error');
+                }
+            }
+            
+            log('', 'info');
+            log('═══════════════════════════════════', 'info');
+            log(`🎉 Database Update Complete!`, 'success');
+            log(`✅ Successfully added: ${added} items`, 'success');
+            log(`❌ Errors: ${errors} items`, errors > 0 ? 'error' : 'success');
+            log('═══════════════════════════════════', 'info');
+            log('', 'info');
+            log('💡 Next steps:', 'info');
+            log('1. Refresh index.html to see new food items', 'info');
+            log('2. Check that all categories have items', 'info');
+            log('3. Test drag-and-drop functionality', 'info');
+        }
+
+        function calculateNutritionScore(food) {
+            // Assign scores based on category and type
+            const scores = {
+                veggie: 5,
+                fruit: 5,
+                protein: 4,
+                dairy: 4,
+                grain: 3,
+                snack: 2
+            };
+            
+            let score = scores[food.category] || 3;
+            
+            // Reduce score for sweet items
+            if (food.is_sweet) {
+                score = Math.max(1, score - 1);
+            }
+            
+            return score;
+        }
+    </script>
+</body>
+</html>
