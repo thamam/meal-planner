@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 Database Seeder - Kids' Meal Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .log-entry { font-family: 'Courier New', monospace; font-size: 0.875rem; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-500 to-blue-500 min-h-screen p-8">
+    
+    <div class="max-w-4xl mx-auto">
+        
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8 mb-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="text-6xl">🌱</div>
+                <div>
+                    <h1 class="text-4xl font-bold text-green-600">Database Seeder</h1>
+                    <p class="text-gray-600">Initialize Firebase with food items and composite builders</p>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                <p class="text-blue-800">
+                    <strong>⚠️ Important:</strong> Make sure you've configured Firebase credentials in 
+                    <code class="bg-blue-100 px-2 py-1 rounded">js/firebase-config.js</code> before running this seeder.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="seedFoodItems()" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                    🍎 Seed Food Items (57)
+                </button>
+                <button onclick="seedCompositeItems()" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                    🏗️ Seed Composite Items (3)
+                </button>
+                <button onclick="clearDatabase()" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition">
+                    🗑️ Clear All Collections
+                </button>
+                <button onclick="verifyDatabase()" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                    ✅ Verify Database
+                </button>
+            </div>
+        </div>
+        
+        <!-- Console Log -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Console Log</h2>
+            <div id="console-log" class="bg-gray-900 text-green-400 p-4 rounded-lg h-96 overflow-y-auto font-mono text-sm">
+                <div class="log-entry">🌱 Database seeder ready...</div>
+                <div class="log-entry">⚠️  Configure Firebase credentials first!</div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script src="js/firebase-config.js"></script>
+    
+    <script>
+        // Log function
+        function log(message, type = 'info') {
+            const consoleLog = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'error': '❌',
+                'warning': '⚠️'
+            }[type] || 'ℹ️';
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${timestamp}] ${icon} ${message}`;
+            consoleLog.appendChild(entry);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+        
+        // Food Items Data (57 items with Hebrew and English names)
+        const foodItemsData = [
+            // Proteins
+            {id: 'food_001', name: 'Grilled Chicken', name_he: 'עוף צלוי', category: 'protein', icon: '🍗', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_002', name: 'Fish Sticks', name_he: 'דגי אצבעות', category: 'protein', icon: '🐟', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_003', name: 'Boiled Eggs', name_he: 'ביצים קשות', category: 'protein', icon: '🥚', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_004', name: 'Turkey Slices', name_he: 'פרוסות הודו', category: 'protein', icon: '🦃', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_005', name: 'Tuna Salad', name_he: 'סלט טונה', category: 'protein', icon: '🥫', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_006', name: 'Meatballs', name_he: 'קציצות', category: 'protein', icon: '🍖', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_007', name: 'Cheese Cubes', name_he: 'קוביות גבינה', category: 'protein', icon: '🧀', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_008', name: 'Peanut Butter', name_he: 'חמאת בוטנים', category: 'protein', icon: '🥜', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_009', name: 'Hummus', name_he: 'חומוס', category: 'protein', icon: '🫘', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_010', name: 'Tofu Nuggets', name_he: 'ניגטס טופו', category: 'protein', icon: '🥡', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            
+            // Vegetables
+            {id: 'food_011', name: 'Baby Carrots', name_he: 'גזר בייבי', category: 'veggie', icon: '🥕', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_012', name: 'Cherry Tomatoes', name_he: 'עגבניות שרי', category: 'veggie', icon: '🍅', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_013', name: 'Cucumber Slices', name_he: 'פרוסות מלפפון', category: 'veggie', icon: '🥒', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_014', name: 'Bell Pepper Strips', name_he: 'רצועות פלפל', category: 'veggie', icon: '🫑', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_015', name: 'Broccoli Florets', name_he: 'פרחי ברוקולי', category: 'veggie', icon: '🥦', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_016', name: 'Celery Sticks', name_he: 'מקלות סלרי', category: 'veggie', icon: '🌿', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_017', name: 'Corn on the Cob', name_he: 'תירס בקלח', category: 'veggie', icon: '🌽', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_018', name: 'Peas', name_he: 'אפונה', category: 'veggie', icon: '🫛', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_019', name: 'Sweet Potato', name_he: 'בטטה', category: 'veggie', icon: '🍠', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_020', name: 'Lettuce', name_he: 'חסה', category: 'veggie', icon: '🥬', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            
+            // Fruits
+            {id: 'food_021', name: 'Apple Slices', name_he: 'פרוסות תפוח', category: 'fruit', icon: '🍎', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_022', name: 'Banana', name_he: 'בננה', category: 'fruit', icon: '🍌', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_023', name: 'Grapes', name_he: 'ענבים', category: 'fruit', icon: '🍇', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_024', name: 'Orange Segments', name_he: 'פלחי תפוז', category: 'fruit', icon: '🍊', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_025', name: 'Strawberries', name_he: 'תותים', category: 'fruit', icon: '🍓', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_026', name: 'Blueberries', name_he: 'אוכמניות', category: 'fruit', icon: '🫐', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_027', name: 'Watermelon Cubes', name_he: 'קוביות אבטיח', category: 'fruit', icon: '🍉', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_028', name: 'Pineapple Chunks', name_he: 'חתיכות אננס', category: 'fruit', icon: '🍍', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_029', name: 'Peach', name_he: 'אפרסק', category: 'fruit', icon: '🍑', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_030', name: 'Pear', name_he: 'אגס', category: 'fruit', icon: '🍐', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            
+            // Grains
+            {id: 'food_031', name: 'Whole Wheat Bread', name_he: 'לחם מלא', category: 'grain', icon: '🍞', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_032', name: 'Pita Bread', name_he: 'פיתה', category: 'grain', icon: '🫓', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_033', name: 'Brown Rice', name_he: 'אורז מלא', category: 'grain', icon: '🍚', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_034', name: 'Pasta', name_he: 'פסטה', category: 'grain', icon: '🍝', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_035', name: 'Crackers', name_he: 'קרקרים', category: 'grain', icon: '🍘', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_036', name: 'Oatmeal', name_he: 'שיבולת שועל', category: 'grain', icon: '🥣', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_037', name: 'Cereal', name_he: 'דגני בוקר', category: 'grain', icon: '🥛', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_038', name: 'Bagel', name_he: 'בייגל', category: 'grain', icon: '🥯', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_039', name: 'Tortilla', name_he: 'טורטייה', category: 'grain', icon: '🌮', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_040', name: 'Couscous', name_he: 'קוסקוס', category: 'grain', icon: '🍚', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            
+            // Dairy
+            {id: 'food_041', name: 'Milk', name_he: 'חלב', category: 'dairy', icon: '🥛', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_042', name: 'Yogurt', name_he: 'יוגורט', category: 'dairy', icon: '🥄', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_043', name: 'String Cheese', name_he: 'גבינת חוטים', category: 'dairy', icon: '🧀', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_044', name: 'Cottage Cheese', name_he: 'גבינת קוטג', category: 'dairy', icon: '🥛', nutrition_score: 5, weekly_limit: 0, is_sweet: false},
+            {id: 'food_045', name: 'Chocolate Milk', name_he: 'חלב שוקולד', category: 'dairy', icon: '🍫', nutrition_score: 3, weekly_limit: 0, is_sweet: true},
+            {id: 'food_046', name: 'Smoothie', name_he: 'שייק', category: 'dairy', icon: '🥤', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_047', name: 'Ice Cream', name_he: 'גלידה', category: 'dairy', icon: '🍦', nutrition_score: 2, weekly_limit: 2, is_sweet: true},
+            
+            // Snacks
+            {id: 'food_048', name: 'Popcorn', name_he: 'פופקורן', category: 'snack', icon: '🍿', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_049', name: 'Pretzels', name_he: 'בייגלה מלוח', category: 'snack', icon: '🥨', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_050', name: 'Trail Mix', name_he: 'תערובת שביל', category: 'snack', icon: '🥜', nutrition_score: 4, weekly_limit: 0, is_sweet: false},
+            {id: 'food_051', name: 'Granola Bar', name_he: 'חטיף גרנולה', category: 'snack', icon: '🍫', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_052', name: 'Rice Cakes', name_he: 'לביבות אורז', category: 'snack', icon: '🍘', nutrition_score: 3, weekly_limit: 0, is_sweet: false},
+            {id: 'food_053', name: 'Fruit Snacks', name_he: 'חטיפי פירות', category: 'snack', icon: '🍬', nutrition_score: 2, weekly_limit: 2, is_sweet: true},
+            {id: 'food_054', name: 'Cookies', name_he: 'עוגיות', category: 'snack', icon: '🍪', nutrition_score: 2, weekly_limit: 2, is_sweet: true},
+            {id: 'food_055', name: 'Chocolate', name_he: 'שוקולד', category: 'snack', icon: '🍫', nutrition_score: 2, weekly_limit: 1, is_sweet: true},
+            {id: 'food_056', name: 'Chips', name_he: 'צ\'יפס', category: 'snack', icon: '🥔', nutrition_score: 2, weekly_limit: 2, is_sweet: false},
+            {id: 'food_057', name: 'Gummy Bears', name_he: 'דובונים גומי', category: 'snack', icon: '🐻', nutrition_score: 1, weekly_limit: 1, is_sweet: true}
+        ];
+        
+        // Composite Items Data
+        const compositeItemsData = [
+            {
+                id: 'composite_001',
+                name: 'Sandwich Builder',
+                name_he: 'בניית כריך',
+                category: 'grain',
+                icon: '🏗️🥪',
+                steps: JSON.stringify(['Bread', 'Filling', 'Veggies']),
+                ingredients_map: JSON.stringify({
+                    'Bread': ['🍞 White', '🌾 Wheat', '🥖 Baguette', '🥯 Bagel', '🫓 Pita'],
+                    'Filling': ['🧀 Cheese', '🦃 Turkey', '🍗 Chicken', '🥚 Egg', '🥜 PB&J', '🥫 Tuna'],
+                    'Veggies': ['🥬 Lettuce', '🍅 Tomato', '🥒 Cucumber', '🧅 Onion', '🫑 Pepper']
+                })
+            },
+            {
+                id: 'composite_002',
+                name: 'Pasta Builder',
+                name_he: 'בניית פסטה',
+                category: 'grain',
+                icon: '🏗️🍝',
+                steps: JSON.stringify(['Pasta', 'Sauce', 'Toppings']),
+                ingredients_map: JSON.stringify({
+                    'Pasta': ['🍝 Spaghetti', '🦐 Penne', '🎀 Farfalle', '🍜 Macaroni', '🥘 Ravioli'],
+                    'Sauce': ['🍅 Marinara', '🧈 Alfredo', '🧄 Pesto', '🥫 Bolognese', '🧀 Cheese'],
+                    'Toppings': ['🧀 Parmesan', '🍖 Meatballs', '🥦 Broccoli', '🍄 Mushrooms', '🫒 Olives']
+                })
+            },
+            {
+                id: 'composite_003',
+                name: 'Salad Builder',
+                name_he: 'בניית סלט',
+                category: 'veggie',
+                icon: '🏗️🥗',
+                steps: JSON.stringify(['Base', 'Protein', 'Dressing']),
+                ingredients_map: JSON.stringify({
+                    'Base': ['🥬 Lettuce', '🥗 Spinach', '🥒 Cucumber', '🍅 Tomatoes', '🥕 Carrots'],
+                    'Protein': ['🍗 Chicken', '🥚 Egg', '🧀 Cheese', '🥫 Tuna', '🫘 Chickpeas'],
+                    'Dressing': ['🫒 Olive Oil', '🍋 Lemon', '🥗 Ranch', '🧈 Caesar', '🍯 Honey Mustard']
+                })
+            }
+        ];
+        
+        // Seed Food Items
+        async function seedFoodItems() {
+            log('🌱 Starting to seed food items...', 'info');
+            
+            try {
+                const batch = db.batch();
+                let count = 0;
+                
+                for (const item of foodItemsData) {
+                    const docRef = db.collection('food_items').doc(item.id);
+                    batch.set(docRef, {
+                        ...item,
+                        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    count++;
+                }
+                
+                await batch.commit();
+                log(`✅ Successfully seeded ${count} food items!`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error seeding food items: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Seed Composite Items
+        async function seedCompositeItems() {
+            log('🏗️ Starting to seed composite items...', 'info');
+            
+            try {
+                const batch = db.batch();
+                let count = 0;
+                
+                for (const item of compositeItemsData) {
+                    const docRef = db.collection('composite_items').doc(item.id);
+                    batch.set(docRef, {
+                        ...item,
+                        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    count++;
+                }
+                
+                await batch.commit();
+                log(`✅ Successfully seeded ${count} composite items!`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error seeding composite items: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Clear Database
+        async function clearDatabase() {
+            if (!confirm('⚠️ Are you sure you want to clear ALL data from the database? This cannot be undone!')) {
+                return;
+            }
+            
+            log('🗑️ Starting to clear database...', 'warning');
+            
+            const collections = ['food_items', 'composite_items', 'users', 'meal_plans', 'shopping_lists', 'custom_foods', 'rules'];
+            
+            try {
+                for (const collectionName of collections) {
+                    const snapshot = await db.collection(collectionName).get();
+                    const batch = db.batch();
+                    let count = 0;
+                    
+                    snapshot.forEach(doc => {
+                        batch.delete(doc.ref);
+                        count++;
+                    });
+                    
+                    if (count > 0) {
+                        await batch.commit();
+                        log(`🗑️ Deleted ${count} documents from ${collectionName}`, 'warning');
+                    } else {
+                        log(`ℹ️  Collection ${collectionName} was already empty`, 'info');
+                    }
+                }
+                
+                log('✅ Database cleared successfully!', 'success');
+                
+            } catch (error) {
+                log(`❌ Error clearing database: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Verify Database
+        async function verifyDatabase() {
+            log('🔍 Verifying database...', 'info');
+            
+            const collections = {
+                'food_items': 57,
+                'composite_items': 3,
+                'users': 0,
+                'meal_plans': 0,
+                'shopping_lists': 0,
+                'custom_foods': 0,
+                'rules': 0
+            };
+            
+            try {
+                for (const [collectionName, expectedCount] of Object.entries(collections)) {
+                    const snapshot = await db.collection(collectionName).get();
+                    const actualCount = snapshot.size;
+                    
+                    if (expectedCount > 0 && actualCount === expectedCount) {
+                        log(`✅ ${collectionName}: ${actualCount}/${expectedCount} documents`, 'success');
+                    } else if (expectedCount === 0) {
+                        log(`ℹ️  ${collectionName}: ${actualCount} documents (user data)`, 'info');
+                    } else {
+                        log(`⚠️  ${collectionName}: ${actualCount}/${expectedCount} documents (expected ${expectedCount})`, 'warning');
+                    }
+                }
+                
+                log('✅ Database verification complete!', 'success');
+                
+            } catch (error) {
+                log(`❌ Error verifying database: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('✅ Seeder initialized and ready', 'success');
+            log('', 'info');
+            log('📝 Instructions:', 'info');
+            log('1. Make sure Firebase is configured in js/firebase-config.js', 'info');
+            log('2. Click "Seed Food Items" to add 57 food items', 'info');
+            log('3. Click "Seed Composite Items" to add 3 builders', 'info');
+            log('4. Click "Verify Database" to check everything worked', 'info');
+        });
+    </script>
+    
+</body>
+</html>

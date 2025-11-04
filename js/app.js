@@ -222,20 +222,10 @@ async function saveProfile() {
         
         if (currentUser && currentUser.id) {
             // Update existing user
-            const response = await fetch(`tables/users/${currentUser.id}`, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(userData)
-            });
-            savedUser = await response.json();
+            savedUser = await FirebaseAPI.updateUser(currentUser.id, userData);
         } else {
             // Create new user
-            const response = await fetch('tables/users', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(userData)
-            });
-            savedUser = await response.json();
+            savedUser = await FirebaseAPI.createUser(userData);
         }
         
         currentUser = { ...userData, id: savedUser.id };
@@ -266,11 +256,10 @@ async function saveProfile() {
 
 async function loadFoodItems() {
     try {
-        const response = await fetch('tables/food_items?limit=100');
-        const data = await response.json();
+        const data = await FirebaseAPI.getFoodItems(100);
         foodItems = (data.data || []).map(item => ({
             ...item,
-            is_sweet: ['Mini Pizza', 'Pasta'].includes(item.name),
+            is_sweet: item.is_sweet || false,
             weekly_limit: item.weekly_limit || 0,
             type: 'regular'
         }));
@@ -283,8 +272,7 @@ async function loadFoodItems() {
 
 async function loadCompositeItems() {
     try {
-        const response = await fetch('tables/composite_items?limit=100');
-        const data = await response.json();
+        const data = await FirebaseAPI.getCompositeItems(100);
         compositeItems = data.data || [];
         console.log(`✅ Loaded ${compositeItems.length} composite items`);
     } catch (error) {
@@ -296,7 +284,8 @@ async function loadCustomFoods() {
     if (!currentUser) return;
     
     try {
-        const response = await fetch(`tables/custom_foods?search=${currentUser.id}`);
+        const data = await FirebaseAPI.getCustomFoods(currentUser.id);
+        const response = { ok: true, json: async () => data };
         const data = await response.json();
         customFoods = (data.data || []).filter(food => food.user_id === currentUser.id).map(food => ({
             ...food,
@@ -634,8 +623,7 @@ async function saveMealPlan(silent = false) {
     const weekStartStr = weekStart.toISOString().split('T')[0];
     
     try {
-        const existingPlans = await fetch(`tables/meal_plans?search=${currentUser.id}`);
-        const plansData = await existingPlans.json();
+        const plansData = await FirebaseAPI.getMealPlans(currentUser.id);
         
         const existingPlan = plansData.data ? plansData.data.find(p => 
             p.user_id === currentUser.id && p.week_start === weekStartStr
@@ -648,17 +636,9 @@ async function saveMealPlan(silent = false) {
         };
         
         if (existingPlan) {
-            await fetch(`tables/meal_plans/${existingPlan.id}`, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(mealPlanData)
-            });
+            await FirebaseAPI.updateMealPlan(existingPlan.id, mealPlanData);
         } else {
-            await fetch('tables/meal_plans', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(mealPlanData)
-            });
+            await FirebaseAPI.createMealPlan(mealPlanData);
         }
         
         if (!silent) {
@@ -688,8 +668,7 @@ async function loadMealPlan() {
     const weekStartStr = weekStart.toISOString().split('T')[0];
     
     try {
-        const response = await fetch(`tables/meal_plans?search=${currentUser.id}`);
-        const data = await response.json();
+        const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
         const plan = data.data ? data.data.find(p => 
             p.user_id === currentUser.id && p.week_start === weekStartStr
@@ -729,8 +708,7 @@ async function autoLoadMealPlan() {
     const weekStartStr = weekStart.toISOString().split('T')[0];
     
     try {
-        const response = await fetch(`tables/meal_plans?search=${currentUser.id}`);
-        const data = await response.json();
+        const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
         const plan = data.data ? data.data.find(p => 
             p.user_id === currentUser.id && p.week_start === weekStartStr
@@ -873,15 +851,11 @@ async function generateShoppingList() {
             const weekStart = getMonday(today);
             const weekStartStr = weekStart.toISOString().split('T')[0];
             
-            await fetch('tables/shopping_lists', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    user_id: currentUser.id,
-                    week_start: weekStartStr,
-                    items: JSON.stringify(ingredientsByCategory),
-                    created_at_readable: new Date().toLocaleDateString()
-                })
+            await FirebaseAPI.createShoppingList({
+                user_id: currentUser.id,
+                week_start: weekStartStr,
+                items: JSON.stringify(ingredientsByCategory),
+                created_at_readable: new Date().toLocaleDateString()
             });
             
             showMessage('🛒 Shopping list generated!', 'success');
@@ -1775,27 +1749,19 @@ async function saveCompositeChanges() {
             ingredients_map: JSON.stringify(editingIngredientsMap)
         };
         
-        const response = await fetch(`tables/composite_items/${currentEditingComposite.id}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(updatedComposite)
-        });
+        await FirebaseAPI.updateCompositeItem(currentEditingComposite.id, updatedComposite);
         
-        if (response.ok) {
-            // Update local data
-            const index = compositeItems.findIndex(c => c.id === currentEditingComposite.id);
-            if (index !== -1) {
-                compositeItems[index] = updatedComposite;
-            }
-            
-            closeEditCompositeModal();
-            renderCompositeManagementList();
-            
-            showMessage('💾 Composite builder updated!', 'success');
-            if (window.Sounds) Sounds.playSuccess();
-        } else {
-            showMessage('❌ Failed to save changes', 'error');
+        // Update local data
+        const index = compositeItems.findIndex(c => c.id === currentEditingComposite.id);
+        if (index !== -1) {
+            compositeItems[index] = updatedComposite;
         }
+        
+        closeEditCompositeModal();
+        renderCompositeManagementList();
+        
+        showMessage('💾 Composite builder updated!', 'success');
+        if (window.Sounds) Sounds.playSuccess();
     } catch (error) {
         console.error('Error saving composite:', error);
         showMessage('❌ Error saving changes', 'error');
@@ -1867,13 +1833,7 @@ async function saveCustomFood() {
             is_sweet: isSweet
         };
         
-        const response = await fetch('tables/custom_foods', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(customFood)
-        });
-        
-        const savedFood = await response.json();
+        const savedFood = await FirebaseAPI.createCustomFood(customFood);
         customFood.id = savedFood.id;
         customFood.type = 'custom';
         customFood.ingredients = JSON.stringify([name]);
@@ -1900,9 +1860,7 @@ async function deleteCustomFood(foodId) {
     }
     
     try {
-        await fetch(`tables/custom_foods/${foodId}`, {
-            method: 'DELETE'
-        });
+        await FirebaseAPI.deleteCustomFood(foodId);
         
         customFoods = customFoods.filter(f => f.id !== foodId);
         
