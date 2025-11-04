@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Database Connection Test - Kids' Meal Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .test-item {
+            transition: all 0.3s;
+        }
+        .test-item:hover {
+            transform: translateX(5px);
+        }
+        .status-pending { color: #6b7280; }
+        .status-success { color: #10b981; }
+        .status-error { color: #ef4444; }
+        .log-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-500 to-pink-500 min-h-screen p-8">
+    
+    <div class="max-w-4xl mx-auto">
+        
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8 mb-6">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="text-6xl">🔍</div>
+                <div>
+                    <h1 class="text-4xl font-bold text-purple-600">Database Connection Test</h1>
+                    <p class="text-gray-600">Testing Kids' Meal Planner API endpoints</p>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                <p class="text-yellow-800">
+                    <strong>⚠️ Expected Result:</strong> All tests will fail because the database is not connected.
+                    This diagnostic tool helps confirm the issue and shows what needs to be fixed.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Test Controls -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6">
+            <div class="flex gap-4">
+                <button onclick="runAllTests()" class="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                    ▶️ Run All Tests
+                </button>
+                <button onclick="clearResults()" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">
+                    🗑️ Clear Results
+                </button>
+            </div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Test Results</h2>
+            <div id="test-results" class="space-y-3">
+                <!-- Test items will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Console Log -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Console Log</h2>
+            <div id="console-log" class="bg-gray-900 text-green-400 p-4 rounded-lg h-64 overflow-y-auto font-mono text-sm">
+                <div class="log-entry">🚀 Ready to test database connections...</div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        // Test configuration
+        const tests = [
+            {
+                id: 'test-users',
+                name: 'Load Users',
+                endpoint: 'tables/users',
+                method: 'GET',
+                description: 'Testing user profiles endpoint'
+            },
+            {
+                id: 'test-food-items',
+                name: 'Load Food Items',
+                endpoint: 'tables/food_items?limit=100',
+                method: 'GET',
+                description: 'Testing food database endpoint'
+            },
+            {
+                id: 'test-composite',
+                name: 'Load Composite Items',
+                endpoint: 'tables/composite_items?limit=100',
+                method: 'GET',
+                description: 'Testing composite builders endpoint'
+            },
+            {
+                id: 'test-meal-plans',
+                name: 'Load Meal Plans',
+                endpoint: 'tables/meal_plans?limit=10',
+                method: 'GET',
+                description: 'Testing meal plans endpoint'
+            },
+            {
+                id: 'test-shopping-lists',
+                name: 'Load Shopping Lists',
+                endpoint: 'tables/shopping_lists?limit=10',
+                method: 'GET',
+                description: 'Testing shopping lists endpoint'
+            }
+        ];
+        
+        // Initialize test results
+        function initializeTests() {
+            const container = document.getElementById('test-results');
+            container.innerHTML = tests.map(test => `
+                <div id="${test.id}" class="test-item border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl status-icon">⏳</span>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">${test.name}</h3>
+                                    <p class="text-sm text-gray-500">${test.description}</p>
+                                    <code class="text-xs text-blue-600">${test.method} ${test.endpoint}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-text text-sm font-semibold status-pending">Pending</span>
+                    </div>
+                    <div class="result-detail mt-3 hidden bg-gray-50 p-3 rounded text-sm"></div>
+                </div>
+            `).join('');
+        }
+        
+        // Log to console
+        function log(message, type = 'info') {
+            const consoleLog = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'error': '❌',
+                'warning': '⚠️'
+            }[type] || 'ℹ️';
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${timestamp}] ${icon} ${message}`;
+            consoleLog.appendChild(entry);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+        
+        // Update test status
+        function updateTestStatus(testId, status, message, details = null) {
+            const testElement = document.getElementById(testId);
+            const statusIcon = testElement.querySelector('.status-icon');
+            const statusText = testElement.querySelector('.status-text');
+            const resultDetail = testElement.querySelector('.result-detail');
+            
+            const statusConfig = {
+                'pending': { icon: '⏳', text: 'Pending', class: 'status-pending' },
+                'running': { icon: '⏳', text: 'Running...', class: 'status-pending' },
+                'success': { icon: '✅', text: 'Success', class: 'status-success' },
+                'error': { icon: '❌', text: 'Failed', class: 'status-error' }
+            };
+            
+            const config = statusConfig[status];
+            statusIcon.textContent = config.icon;
+            statusText.textContent = config.text;
+            statusText.className = `status-text text-sm font-semibold ${config.class}`;
+            
+            if (details) {
+                resultDetail.innerHTML = `
+                    <div class="font-semibold mb-2">${message}</div>
+                    <pre class="text-xs overflow-x-auto">${JSON.stringify(details, null, 2)}</pre>
+                `;
+                resultDetail.classList.remove('hidden');
+            } else if (message) {
+                resultDetail.innerHTML = `<div>${message}</div>`;
+                resultDetail.classList.remove('hidden');
+            }
+        }
+        
+        // Run a single test
+        async function runTest(test) {
+            log(`Testing: ${test.name}`, 'info');
+            updateTestStatus(test.id, 'running', 'Making request...');
+            
+            try {
+                const startTime = performance.now();
+                const response = await fetch(test.endpoint, {
+                    method: test.method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ ${test.name} - Success (${duration}ms)`, 'success');
+                    updateTestStatus(
+                        test.id, 
+                        'success', 
+                        `Response received in ${duration}ms`,
+                        {
+                            status: response.status,
+                            statusText: response.statusText,
+                            dataReceived: Array.isArray(data.data) ? `${data.data.length} items` : 'Single item',
+                            sampleData: data
+                        }
+                    );
+                    return { success: true, test: test.name };
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ ${test.name} - Failed: ${error.message}`, 'error');
+                updateTestStatus(
+                    test.id, 
+                    'error', 
+                    `Connection failed`,
+                    {
+                        error: error.message,
+                        endpoint: test.endpoint,
+                        possibleCauses: [
+                            'Database not configured',
+                            'Invalid endpoint URL',
+                            'Network error',
+                            'CORS policy blocking request'
+                        ],
+                        solution: 'See PROJECT_RECOVERY_PLAN.md for database setup options'
+                    }
+                );
+                return { success: false, test: test.name, error: error.message };
+            }
+        }
+        
+        // Run all tests
+        async function runAllTests() {
+            log('🚀 Starting all tests...', 'info');
+            const results = [];
+            
+            for (const test of tests) {
+                const result = await runTest(test);
+                results.push(result);
+                // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Summary
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.filter(r => !r.success).length;
+            
+            log('', 'info');
+            log('📊 Test Summary:', 'info');
+            log(`   ✅ Passed: ${successCount}/${tests.length}`, successCount > 0 ? 'success' : 'info');
+            log(`   ❌ Failed: ${failCount}/${tests.length}`, failCount > 0 ? 'error' : 'info');
+            
+            if (failCount === tests.length) {
+                log('', 'info');
+                log('⚠️  All tests failed - Database not connected', 'warning');
+                log('📖 See PROJECT_RECOVERY_PLAN.md for solutions', 'info');
+            } else if (failCount > 0) {
+                log('', 'info');
+                log('⚠️  Some tests failed - Partial database connectivity', 'warning');
+            } else {
+                log('', 'info');
+                log('🎉 All tests passed - Database fully connected!', 'success');
+            }
+        }
+        
+        // Clear results
+        function clearResults() {
+            initializeTests();
+            const consoleLog = document.getElementById('console-log');
+            consoleLog.innerHTML = '<div class="log-entry">🗑️ Results cleared. Ready to test again...</div>';
+            log('Ready to run tests', 'info');
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTests();
+            log('✅ Test suite initialized', 'success');
+            log('👉 Click "Run All Tests" to begin', 'info');
+            log('', 'info');
+            log('ℹ️  Expected: All tests will fail (database not connected)', 'info');
+        });
+    </script>
+    
+</body>
+</html>
