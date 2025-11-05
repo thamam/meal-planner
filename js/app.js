@@ -285,8 +285,6 @@ async function loadCustomFoods() {
     
     try {
         const data = await FirebaseAPI.getCustomFoods(currentUser.id);
-        const response = { ok: true, json: async () => data };
-        const data = await response.json();
         customFoods = (data.data || []).filter(food => food.user_id === currentUser.id).map(food => ({
             ...food,
             type: 'custom'
