@@ -2,24 +2,18 @@
 // 🔥 Firebase Configuration
 // ==========================================
 
-// NOTE: You need to replace these values with your actual Firebase project credentials
-// Get these from: https://console.firebase.google.com/
-// 1. Go to Project Settings > General
-// 2. Scroll down to "Your apps" section
-// 3. Click the web app icon (</>)
-// 4. Copy the firebaseConfig object
-
+// Your Firebase project credentials (already configured!)
+// Project: kids-meal-planner
 const firebaseConfig = {
-    // TODO: Replace with your Firebase project credentials
-    apiKey: "YOUR_API_KEY_HERE",
-    authDomain: "your-project-id.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project-id.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef123456"
+  apiKey: "AIzaSyAHciw1eLjoij-TWHZ3_IO3KS8mv4IPnaA",
+  authDomain: "kids-meal-planner.firebaseapp.com",
+  projectId: "kids-meal-planner",
+  storageBucket: "kids-meal-planner.firebasestorage.app",
+  messagingSenderId: "530830532763",
+  appId: "1:530830532763:web:4afbf9007596beee2ce63e"
 };
 
-// Initialize Firebase (if not already initialized)
+// Initialize Firebase (using compat mode for compatibility)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 } else {
