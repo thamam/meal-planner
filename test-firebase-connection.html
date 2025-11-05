@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Connection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-4">🔍 Firebase Connection Test</h1>
+        <div id="output" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm h-96 overflow-auto"></div>
+        <button onclick="testConnection()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded">Test Connection</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHciw1eLjoij-TWHZ3_IO3KS8mv4IPnaA",
+            authDomain: "kids-meal-planner.firebaseapp.com",
+            projectId: "kids-meal-planner",
+            storageBucket: "kids-meal-planner.firebasestorage.app",
+            messagingSenderId: "530830532763",
+            appId: "1:530830532763:web:4afbf9007596beee2ce63e"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += message + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function testConnection() {
+            document.getElementById('output').innerHTML = '';
+            log('🔥 Testing Firebase connection...\n');
+            
+            try {
+                log('1. Checking Firebase initialization...');
+                log('   ✅ Firebase app initialized: ' + firebase.app().name);
+                log('   ✅ Firestore instance created\n');
+                
+                log('2. Testing database read access...');
+                const testDoc = await db.collection('food_items').limit(1).get();
+                log('   ✅ Can read from database\n');
+                
+                log('3. Counting food items...');
+                const foodSnapshot = await db.collection('food_items').get();
+                log('   ✅ Found ' + foodSnapshot.size + ' food items\n');
+                
+                if (foodSnapshot.size > 0) {
+                    log('4. Sample food items:');
+                    let count = 0;
+                    foodSnapshot.forEach(doc => {
+                        if (count < 5) {
+                            const data = doc.data();
+                            log('   - ' + data.icon + ' ' + data.name + ' (' + data.category + ')');
+                            count++;
+                        }
+                    });
+                    log('\n✅ ALL TESTS PASSED! Database is working correctly.');
+                } else {
+                    log('❌ No food items found in database!');
+                    log('   Run seed-database.html to populate the database.');
+                }
+                
+                log('\n5. Testing FirebaseAPI wrapper...');
+                
+                // Test the API wrapper
+                const FirebaseAPI = {
+                    get db() {
+                        return window.db || firebase.firestore();
+                    },
+                    
+                    async getFoodItems(limit = 100) {
+                        try {
+                            const snapshot = await this.db.collection('food_items').limit(limit).get();
+                            const items = [];
+                            snapshot.forEach(doc => {
+                                items.push({ id: doc.id, ...doc.data() });
+                            });
+                            return { data: items };
+                        } catch (error) {
+                            console.error('Error getting food items:', error);
+                            throw error;
+                        }
+                    }
+                };
+                
+                const result = await FirebaseAPI.getFoodItems(100);
+                log('   ✅ FirebaseAPI.getFoodItems() returned ' + result.data.length + ' items');
+                log('\n🎉 SUCCESS! Everything is working!\n');
+                
+            } catch (error) {
+                log('\n❌ ERROR: ' + error.message);
+                log('\nFull error details:');
+                log(JSON.stringify(error, null, 2));
+            }
+        }
+        
+        // Auto-run test on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(testConnection, 500);
+        });
+    </script>
+</body>
+</html>
