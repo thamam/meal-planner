@@ -66,7 +66,25 @@
         
     </div>
     
-    <script src="js/firebase-config.js"></script>
+    <script>
+        // Initialize Firebase directly in this page
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHciw1eLjoij-TWHZ3_IO3KS8mv4IPnaA",
+            authDomain: "kids-meal-planner.firebaseapp.com",
+            projectId: "kids-meal-planner",
+            storageBucket: "kids-meal-planner.firebasestorage.app",
+            messagingSenderId: "530830532763",
+            appId: "1:530830532763:web:4afbf9007596beee2ce63e"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        
+        console.log('🔥 Firebase initialized in seeder');
+    </script>
     
     <script>
         // Log function
