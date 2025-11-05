@@ -17,7 +17,7 @@ const FirebaseAPI = {
     
     async getUser(userId) {
         try {
-            const doc = await this.this.db.collection('users').doc(userId).get();
+            const doc = await this.db.collection('users').doc(userId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
