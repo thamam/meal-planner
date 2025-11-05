@@ -232,15 +232,25 @@ async function saveProfile() {
     };
     
     try {
+        // Check if FirebaseAPI is available
+        if (!window.FirebaseAPI) {
+            throw new Error('FirebaseAPI is not loaded. Please refresh the page.');
+        }
+        
+        console.log('Attempting to save user:', userData);
         let savedUser;
         
         if (currentUser && currentUser.id) {
             // Update existing user
+            console.log('Updating existing user:', currentUser.id);
             savedUser = await FirebaseAPI.updateUser(currentUser.id, userData);
         } else {
             // Create new user
+            console.log('Creating new user');
             savedUser = await FirebaseAPI.createUser(userData);
         }
+        
+        console.log('User saved successfully:', savedUser);
         
         currentUser = { ...userData, id: savedUser.id };
         
@@ -259,7 +269,12 @@ async function saveProfile() {
         if (window.Sounds) Sounds.playSuccess();
     } catch (error) {
         console.error('Error saving profile:', error);
-        showMessage('❌ Error saving profile. Please try again.', 'error');
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        });
+        showMessage('❌ Error saving profile: ' + error.message, 'error');
         if (window.Sounds) Sounds.playError();
     }
 }
