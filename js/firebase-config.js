@@ -20,11 +20,11 @@ if (!firebase.apps.length) {
     firebase.app(); // Use existing app
 }
 
-// Initialize Firestore
-const db = firebase.firestore();
+// Initialize Firestore and make it globally available
+window.db = firebase.firestore();
 
 // Enable offline persistence for better UX
-db.enablePersistence()
+window.db.enablePersistence()
     .catch((err) => {
         if (err.code === 'failed-precondition') {
             console.warn('Multiple tabs open, persistence only works in one tab at a time.');

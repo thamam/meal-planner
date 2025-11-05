@@ -6,13 +6,18 @@
 
 const FirebaseAPI = {
     
+    // Helper to get db reference
+    get db() {
+        return window.db || firebase.firestore();
+    },
+    
     // ==========================================
     // Users Collection
     // ==========================================
     
     async getUser(userId) {
         try {
-            const doc = await db.collection('users').doc(userId).get();
+            const doc = await this.this.db.collection('users').doc(userId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
@@ -25,7 +30,7 @@ const FirebaseAPI = {
     
     async createUser(userData) {
         try {
-            const docRef = await db.collection('users').add({
+            const docRef = await this.db.collection('users').add({
                 ...userData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -39,7 +44,7 @@ const FirebaseAPI = {
     
     async updateUser(userId, userData) {
         try {
-            await db.collection('users').doc(userId).update({
+            await this.db.collection('users').doc(userId).update({
                 ...userData,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -52,7 +57,7 @@ const FirebaseAPI = {
     
     async deleteUser(userId) {
         try {
-            await db.collection('users').doc(userId).delete();
+            await this.db.collection('users').doc(userId).delete();
             return { success: true };
         } catch (error) {
             console.error('Error deleting user:', error);
@@ -66,7 +71,7 @@ const FirebaseAPI = {
     
     async getFoodItems(limit = 100) {
         try {
-            const snapshot = await db.collection('food_items')
+            const snapshot = await this.db.collection('food_items')
                 .limit(limit)
                 .get();
             
@@ -84,7 +89,7 @@ const FirebaseAPI = {
     
     async getFoodItem(foodId) {
         try {
-            const doc = await db.collection('food_items').doc(foodId).get();
+            const doc = await this.db.collection('food_items').doc(foodId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
@@ -97,7 +102,7 @@ const FirebaseAPI = {
     
     async createFoodItem(foodData) {
         try {
-            const docRef = await db.collection('food_items').add({
+            const docRef = await this.db.collection('food_items').add({
                 ...foodData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -115,7 +120,7 @@ const FirebaseAPI = {
     
     async getCompositeItems(limit = 100) {
         try {
-            const snapshot = await db.collection('composite_items')
+            const snapshot = await this.db.collection('composite_items')
                 .limit(limit)
                 .get();
             
@@ -133,7 +138,7 @@ const FirebaseAPI = {
     
     async getCompositeItem(itemId) {
         try {
-            const doc = await db.collection('composite_items').doc(itemId).get();
+            const doc = await this.db.collection('composite_items').doc(itemId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
@@ -146,7 +151,7 @@ const FirebaseAPI = {
     
     async updateCompositeItem(itemId, itemData) {
         try {
-            await db.collection('composite_items').doc(itemId).update({
+            await this.db.collection('composite_items').doc(itemId).update({
                 ...itemData,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -163,7 +168,7 @@ const FirebaseAPI = {
     
     async getCustomFoods(userId) {
         try {
-            const snapshot = await db.collection('custom_foods')
+            const snapshot = await this.db.collection('custom_foods')
                 .where('user_id', '==', userId)
                 .get();
             
@@ -181,7 +186,7 @@ const FirebaseAPI = {
     
     async createCustomFood(foodData) {
         try {
-            const docRef = await db.collection('custom_foods').add({
+            const docRef = await this.db.collection('custom_foods').add({
                 ...foodData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -195,7 +200,7 @@ const FirebaseAPI = {
     
     async deleteCustomFood(foodId) {
         try {
-            await db.collection('custom_foods').doc(foodId).delete();
+            await this.db.collection('custom_foods').doc(foodId).delete();
             return { success: true };
         } catch (error) {
             console.error('Error deleting custom food:', error);
@@ -209,7 +214,7 @@ const FirebaseAPI = {
     
     async getMealPlans(userId, limit = 10) {
         try {
-            const snapshot = await db.collection('meal_plans')
+            const snapshot = await this.db.collection('meal_plans')
                 .where('user_id', '==', userId)
                 .orderBy('created_at', 'desc')
                 .limit(limit)
@@ -229,7 +234,7 @@ const FirebaseAPI = {
     
     async getMealPlan(planId) {
         try {
-            const doc = await db.collection('meal_plans').doc(planId).get();
+            const doc = await this.db.collection('meal_plans').doc(planId).get();
             if (doc.exists) {
                 return { id: doc.id, ...doc.data() };
             }
@@ -242,7 +247,7 @@ const FirebaseAPI = {
     
     async createMealPlan(planData) {
         try {
-            const docRef = await db.collection('meal_plans').add({
+            const docRef = await this.db.collection('meal_plans').add({
                 ...planData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -256,7 +261,7 @@ const FirebaseAPI = {
     
     async updateMealPlan(planId, planData) {
         try {
-            await db.collection('meal_plans').doc(planId).update({
+            await this.db.collection('meal_plans').doc(planId).update({
                 ...planData,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -269,7 +274,7 @@ const FirebaseAPI = {
     
     async deleteMealPlan(planId) {
         try {
-            await db.collection('meal_plans').doc(planId).delete();
+            await this.db.collection('meal_plans').doc(planId).delete();
             return { success: true };
         } catch (error) {
             console.error('Error deleting meal plan:', error);
@@ -283,7 +288,7 @@ const FirebaseAPI = {
     
     async getShoppingLists(userId, limit = 10) {
         try {
-            const snapshot = await db.collection('shopping_lists')
+            const snapshot = await this.db.collection('shopping_lists')
                 .where('user_id', '==', userId)
                 .orderBy('created_at', 'desc')
                 .limit(limit)
@@ -303,7 +308,7 @@ const FirebaseAPI = {
     
     async createShoppingList(listData) {
         try {
-            const docRef = await db.collection('shopping_lists').add({
+            const docRef = await this.db.collection('shopping_lists').add({
                 ...listData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -321,7 +326,7 @@ const FirebaseAPI = {
     
     async getRules(userId) {
         try {
-            const snapshot = await db.collection('rules')
+            const snapshot = await this.db.collection('rules')
                 .where('user_id', '==', userId)
                 .get();
             
@@ -339,7 +344,7 @@ const FirebaseAPI = {
     
     async createRule(ruleData) {
         try {
-            const docRef = await db.collection('rules').add({
+            const docRef = await this.db.collection('rules').add({
                 ...ruleData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -353,7 +358,7 @@ const FirebaseAPI = {
     
     async updateRule(ruleId, ruleData) {
         try {
-            await db.collection('rules').doc(ruleId).update({
+            await this.db.collection('rules').doc(ruleId).update({
                 ...ruleData,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
