@@ -38,6 +38,20 @@ const dayLabels = {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🍱 Initializing Kids Meal Planner Enhanced...');
     
+    // Wait for Firebase to be ready
+    if (!window.FirebaseAPI) {
+        console.warn('⏳ Waiting for FirebaseAPI to load...');
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                if (window.FirebaseAPI) {
+                    clearInterval(checkInterval);
+                    console.log('✅ FirebaseAPI is ready');
+                    resolve();
+                }
+            }, 100);
+        });
+    }
+    
     // Initialize language (FIRST - before any UI)
     if (window.i18n) {
         i18n.initLanguage();
