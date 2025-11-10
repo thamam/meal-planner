@@ -160,8 +160,21 @@ function setupKeyboardShortcuts() {
 function loadUserFromStorage() {
     const savedUser = localStorage.getItem('mealPlannerUser');
     if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUserDisplay();
+        try {
+            const user = JSON.parse(savedUser);
+            // Validate required fields
+            if (!user.id || !user.name || !user.age || !user.avatar) {
+                console.warn('Invalid user data in localStorage');
+                localStorage.removeItem('mealPlannerUser');
+                return;
+            }
+            currentUser = user;
+            updateUserDisplay();
+        } catch (error) {
+            console.error('Error parsing user data from localStorage:', error);
+            localStorage.removeItem('mealPlannerUser');
+            currentUser = null;
+        }
     }
 }
 
@@ -644,41 +657,77 @@ async function saveMealPlan(silent = false) {
         showProfileModal();
         return;
     }
-    
-    const today = new Date();
-    const weekStart = getMonday(today);
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
+        // Show loading state
+        if (!silent) {
+            const saveBtn = document.getElementById('btnSave');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                saveBtn.textContent = '💾 Saving...';
+            }
+        }
+
+        const today = new Date();
+        const weekStart = getMonday(today);
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+
+        // Get existing plans
         const plansData = await FirebaseAPI.getMealPlans(currentUser.id);
-        
-        const existingPlan = plansData.data ? plansData.data.find(p => 
+        if (!plansData) {
+            throw new Error('Failed to fetch existing meal plans');
+        }
+
+        const existingPlan = plansData.data ? plansData.data.find(p =>
             p.user_id === currentUser.id && p.week_start === weekStartStr
         ) : null;
-        
+
         const mealPlanData = {
             user_id: currentUser.id,
             week_start: weekStartStr,
             meals: JSON.stringify(weeklyMeals)
         };
-        
+
+        // Perform save
+        let result;
         if (existingPlan) {
-            await FirebaseAPI.updateMealPlan(existingPlan.id, mealPlanData);
+            result = await FirebaseAPI.updateMealPlan(existingPlan.id, mealPlanData);
         } else {
-            await FirebaseAPI.createMealPlan(mealPlanData);
+            result = await FirebaseAPI.createMealPlan(mealPlanData);
         }
-        
+
+        // Verify save was successful
+        if (!result || !result.id) {
+            throw new Error('Save operation did not return valid result');
+        }
+
+        // Verify data was persisted by fetching it back
+        const verification = await FirebaseAPI.getMealPlan(result.id);
+        if (!verification) {
+            throw new Error('Could not verify saved meal plan');
+        }
+
         if (!silent) {
             showMessage('💾 Meal plan saved successfully!', 'success');
             if (window.Sounds) Sounds.playSuccess();
         } else {
-            console.log('💾 Auto-saved meal plan');
+            console.log('💾 Auto-saved meal plan at', new Date().toLocaleTimeString());
         }
+
     } catch (error) {
         console.error('Error saving meal plan:', error);
+        showMessage('❌ Error saving meal plan: ' + (error.message || 'Unknown error'), 'error');
+        if (window.Sounds) Sounds.playError();
+    } finally {
+        // Restore button state
         if (!silent) {
-            showMessage('❌ Error saving meal plan', 'error');
-            if (window.Sounds) Sounds.playError();
+            const saveBtn = document.getElementById('btnSave');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.textContent = '💾 Save';
+            }
         }
     }
 }
@@ -705,10 +754,22 @@ async function loadMealPlan() {
             if (window.AutoSave) {
                 AutoSave.setLoadingState(true);
             }
-            
-            weeklyMeals = JSON.parse(plan.meals);
+
+            try {
+                weeklyMeals = JSON.parse(plan.meals);
+            } catch (error) {
+                console.error('Error parsing meal plan data:', error);
+                showMessage('Error: Corrupted meal plan data. Starting fresh.', 'error');
+                weeklyMeals = {
+                    monday: [],
+                    tuesday: [],
+                    wednesday: [],
+                    thursday: [],
+                    friday: []
+                };
+            }
             updateWeeklyPlanDisplay();
-            
+
             if (window.AutoSave) {
                 AutoSave.clearHistory();
                 AutoSave.saveToHistory(weeklyMeals);
@@ -745,14 +806,25 @@ async function autoLoadMealPlan() {
             if (window.AutoSave) {
                 AutoSave.setLoadingState(true);
             }
-            
-            weeklyMeals = JSON.parse(plan.meals);
+
+            try {
+                weeklyMeals = JSON.parse(plan.meals);
+            } catch (error) {
+                console.error('Error parsing meal plan data:', error);
+                weeklyMeals = {
+                    monday: [],
+                    tuesday: [],
+                    wednesday: [],
+                    thursday: [],
+                    friday: []
+                };
+            }
             updateWeeklyPlanDisplay();
-            
+
             if (window.AutoSave) {
                 setTimeout(() => AutoSave.setLoadingState(false), 100);
             }
-            
+
             console.log('✅ Auto-loaded meal plan');
         }
     } catch (error) {
@@ -789,9 +861,7 @@ function clearWeek() {
 // ==========================================
 
 function switchTab(tab) {
-    // Password protection for parent view (DISABLED FOR DEVELOPMENT)
-    // TODO: Re-enable before publishing to production
-    /*
+    // Password protection for parent view - ENABLED
     if (tab === 'parent') {
         const password = prompt('🔒 Parent Password Required:\n\nEnter the password to access Parent View:');
         if (password !== '1580') {
@@ -800,13 +870,12 @@ function switchTab(tab) {
             return; // Don't switch tabs
         }
     }
-    */
-    
+
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active', 'bg-white', 'text-purple-600');
         btn.classList.add('bg-purple-100', 'text-purple-600');
     });
-    
+
     if (tab === 'planner') {
         document.getElementById('tab-planner').classList.add('active', 'bg-white');
         document.getElementById('plannerTab').classList.remove('hidden');
@@ -817,7 +886,7 @@ function switchTab(tab) {
         document.getElementById('parentTab').classList.remove('hidden');
         updateParentView();
     }
-    
+
     if (window.Sounds) Sounds.playClick();
 }
 
@@ -1022,16 +1091,18 @@ function openCompositeBuilder(compositeItem, targetDay = null) {
     try {
         steps = JSON.parse(compositeItem.steps);
     } catch (e) {
-        console.error('Error parsing steps:', e);
+        console.error('Error parsing composite steps:', e);
+        showMessage('❌ Error: Invalid composite builder format', 'error');
         return;
     }
-    
+
     // Parse ingredients map
     let ingredientsMap = {};
     try {
         ingredientsMap = JSON.parse(compositeItem.ingredients_map);
     } catch (e) {
         console.error('Error parsing ingredients map:', e);
+        showMessage('❌ Error: Invalid composite ingredients', 'error');
         return;
     }
     
@@ -1111,6 +1182,8 @@ function updateBuilderPreview() {
     try {
         steps = JSON.parse(currentCompositeItem.steps);
     } catch (e) {
+        console.error('Error parsing composite steps:', e);
+        showMessage('❌ Error: Invalid composite format', 'error');
         return;
     }
     
@@ -1514,6 +1587,7 @@ function openEditComposite(compositeId) {
         ingredientsMap = JSON.parse(composite.ingredients_map);
     } catch (e) {
         console.error('Error parsing composite data:', e);
+        showMessage('❌ Error: Invalid composite data format', 'error');
         return;
     }
     
