@@ -17,6 +17,7 @@ let weeklyMeals = {
     thursday: [],
     friday: []
 };
+let isLoadingMealPlan = false; // Prevent race conditions
 let selectedAvatar = '😊';
 let currentCompositeItem = null;
 let compositeSelections = {};
@@ -43,12 +44,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('⏳ Waiting for FirebaseAPI to load...');
         try {
             await new Promise((resolve, reject) => {
+                let checkInterval = null;
+
                 const timeout = setTimeout(() => {
-                    clearInterval(checkInterval);
+                    if (checkInterval) clearInterval(checkInterval);
                     reject(new Error('Firebase initialization timeout after 10 seconds'));
                 }, 10000); // 10 second timeout
 
-                const checkInterval = setInterval(() => {
+                checkInterval = setInterval(() => {
                     if (window.FirebaseAPI) {
                         clearInterval(checkInterval);
                         clearTimeout(timeout);
@@ -803,11 +806,27 @@ async function loadMealPlan() {
         showProfileModal();
         return;
     }
-    
+
+    // Prevent race condition
+    if (isLoadingMealPlan) {
+        console.log('⚠️ Meal plan already loading, skipping duplicate request');
+        return;
+    }
+
+    isLoadingMealPlan = true;
+
+    // Show loading state
+    const loadBtn = document.getElementById('btnLoad');
+    if (loadBtn) {
+        loadBtn.disabled = true;
+        loadBtn.style.opacity = '0.5';
+        loadBtn.textContent = '📂 Loading...';
+    }
+
     const today = new Date();
     const weekStart = getMonday(today);
     const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
         const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
@@ -850,16 +869,33 @@ async function loadMealPlan() {
         console.error('Error loading meal plan:', error);
         showMessage('❌ Error loading meal plan', 'error');
         if (window.Sounds) Sounds.playError();
+    } finally {
+        isLoadingMealPlan = false;
+        // Restore button state
+        const loadBtn = document.getElementById('btnLoad');
+        if (loadBtn) {
+            loadBtn.disabled = false;
+            loadBtn.style.opacity = '1';
+            loadBtn.textContent = '📂 Load';
+        }
     }
 }
 
 async function autoLoadMealPlan() {
     if (!currentUser) return;
-    
+
+    // Prevent race condition
+    if (isLoadingMealPlan) {
+        console.log('⚠️ Meal plan already loading, skipping auto-load');
+        return;
+    }
+
+    isLoadingMealPlan = true;
+
     const today = new Date();
     const weekStart = getMonday(today);
     const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
         const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
@@ -894,6 +930,8 @@ async function autoLoadMealPlan() {
         }
     } catch (error) {
         console.error('Error auto-loading meal plan:', error);
+    } finally {
+        isLoadingMealPlan = false;
     }
 }
 
@@ -1116,22 +1154,25 @@ function getMonday(date) {
 function showMessage(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `fixed top-4 right-4 px-6 py-4 rounded-full shadow-2xl text-white font-semibold z-50 animate-bounce`;
-    
+
     const colors = {
         success: 'bg-green-500',
         error: 'bg-red-500',
         warning: 'bg-yellow-500',
         info: 'bg-blue-500'
     };
-    
+
     toast.classList.add(colors[type] || colors.info);
     toast.textContent = message;
-    
+
     document.body.appendChild(toast);
-    
+
+    // Longer duration for better readability (5s for important messages, 4s for others)
+    const duration = (type === 'error' || type === 'warning') ? 5000 : 4000;
+
     setTimeout(() => {
         toast.remove();
-    }, 3000);
+    }, duration);
 }
 
 // ==========================================

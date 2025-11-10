@@ -38,14 +38,14 @@ function undo() {
         if (window.playSound) playSound('error');
         return null;
     }
-    
+
     // Get previous state
     const previousState = historyStack.pop();
-    
-    showMessage('↩️ Undone!', 'info');
+
+    showMessage('↩️ Changes reverted to previous state', 'info');
     if (window.playSound) playSound('click');
     updateUndoButton();
-    
+
     return JSON.parse(JSON.stringify(previousState));
 }
 

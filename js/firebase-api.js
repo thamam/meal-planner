@@ -5,10 +5,34 @@
 // with Firebase Firestore operations
 
 const FirebaseAPI = {
-    
+
     // Helper to get db reference
     get db() {
         return window.db || firebase.firestore();
+    },
+
+    // Retry helper for transient failures
+    async retryOperation(operation, maxRetries = 3, delayMs = 1000) {
+        let lastError;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await operation();
+            } catch (error) {
+                lastError = error;
+                const isTransient = error.code === 'unavailable' ||
+                                   error.code === 'deadline-exceeded' ||
+                                   error.message.includes('network') ||
+                                   error.message.includes('timeout');
+
+                if (isTransient && attempt < maxRetries) {
+                    console.warn(`Retry ${attempt}/${maxRetries} after ${delayMs}ms:`, error.message);
+                    await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+                    continue;
+                }
+                throw error;
+            }
+        }
+        throw lastError;
     },
     
     // ==========================================
@@ -218,25 +242,27 @@ const FirebaseAPI = {
                 throw new Error('User ID is required');
             }
 
-            const snapshot = await this.db.collection('meal_plans')
-                .where('user_id', '==', userId)
-                .orderBy('created_at', 'desc')
-                .limit(limit)
-                .get();
+            return await this.retryOperation(async () => {
+                const snapshot = await this.db.collection('meal_plans')
+                    .where('user_id', '==', userId)
+                    .orderBy('created_at', 'desc')
+                    .limit(limit)
+                    .get();
 
-            if (!snapshot) {
-                throw new Error('Failed to fetch meal plans from database');
-            }
-
-            const plans = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                if (data) {
-                    plans.push({ id: doc.id, ...data });
+                if (!snapshot) {
+                    throw new Error('Failed to fetch meal plans from database');
                 }
-            });
 
-            return { data: plans };
+                const plans = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data) {
+                        plans.push({ id: doc.id, ...data });
+                    }
+                });
+
+                return { data: plans };
+            });
         } catch (error) {
             console.error('Error getting meal plans:', error);
             throw error;
@@ -274,17 +300,19 @@ const FirebaseAPI = {
                 throw new Error('Invalid meal plan data: user_id is required');
             }
 
-            const docRef = await this.db.collection('meal_plans').add({
-                ...planData,
-                created_at: firebase.firestore.FieldValue.serverTimestamp(),
-                updated_at: firebase.firestore.FieldValue.serverTimestamp()
+            return await this.retryOperation(async () => {
+                const docRef = await this.db.collection('meal_plans').add({
+                    ...planData,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                if (!docRef || !docRef.id) {
+                    throw new Error('Failed to create meal plan: no document ID returned');
+                }
+
+                return { id: docRef.id, ...planData };
             });
-
-            if (!docRef || !docRef.id) {
-                throw new Error('Failed to create meal plan: no document ID returned');
-            }
-
-            return { id: docRef.id, ...planData };
         } catch (error) {
             console.error('Error creating meal plan:', error);
             throw error;
@@ -300,12 +328,14 @@ const FirebaseAPI = {
                 throw new Error('Plan data is required');
             }
 
-            await this.db.collection('meal_plans').doc(planId).update({
-                ...planData,
-                updated_at: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            return await this.retryOperation(async () => {
+                await this.db.collection('meal_plans').doc(planId).update({
+                    ...planData,
+                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-            return { id: planId, ...planData };
+                return { id: planId, ...planData };
+            });
         } catch (error) {
             console.error('Error updating meal plan:', error);
             throw error;
