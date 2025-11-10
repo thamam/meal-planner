@@ -70,12 +70,18 @@ function updateUndoButton() {
 function triggerAutoSave(saveFn, currentUser) {
     if (isLoadingState) return;
     if (!currentUser) return;
-    
+
     // Debounce auto-save
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(async () => {
-        console.log('💾 Auto-saving...');
-        await saveFn(true); // Silent save
+        try {
+            console.log('💾 Auto-saving...');
+            await saveFn(true); // Silent save
+        } catch (error) {
+            console.error('❌ Auto-save failed:', error);
+            // Don't show error message for silent auto-save failures
+            // User can manually save if needed
+        }
     }, 2000); // Save 2 seconds after last change
 }
 

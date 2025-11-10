@@ -214,17 +214,28 @@ const FirebaseAPI = {
     
     async getMealPlans(userId, limit = 10) {
         try {
+            if (!userId) {
+                throw new Error('User ID is required');
+            }
+
             const snapshot = await this.db.collection('meal_plans')
                 .where('user_id', '==', userId)
                 .orderBy('created_at', 'desc')
                 .limit(limit)
                 .get();
-            
+
+            if (!snapshot) {
+                throw new Error('Failed to fetch meal plans from database');
+            }
+
             const plans = [];
             snapshot.forEach(doc => {
-                plans.push({ id: doc.id, ...doc.data() });
+                const data = doc.data();
+                if (data) {
+                    plans.push({ id: doc.id, ...data });
+                }
             });
-            
+
             return { data: plans };
         } catch (error) {
             console.error('Error getting meal plans:', error);
@@ -234,9 +245,21 @@ const FirebaseAPI = {
     
     async getMealPlan(planId) {
         try {
+            if (!planId) {
+                throw new Error('Plan ID is required');
+            }
+
             const doc = await this.db.collection('meal_plans').doc(planId).get();
+            if (!doc) {
+                throw new Error('Failed to fetch meal plan from database');
+            }
+
             if (doc.exists) {
-                return { id: doc.id, ...doc.data() };
+                const data = doc.data();
+                if (!data) {
+                    throw new Error('Meal plan data is empty');
+                }
+                return { id: doc.id, ...data };
             }
             return null;
         } catch (error) {
@@ -247,11 +270,20 @@ const FirebaseAPI = {
     
     async createMealPlan(planData) {
         try {
+            if (!planData || !planData.user_id) {
+                throw new Error('Invalid meal plan data: user_id is required');
+            }
+
             const docRef = await this.db.collection('meal_plans').add({
                 ...planData,
                 created_at: firebase.firestore.FieldValue.serverTimestamp(),
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
+
+            if (!docRef || !docRef.id) {
+                throw new Error('Failed to create meal plan: no document ID returned');
+            }
+
             return { id: docRef.id, ...planData };
         } catch (error) {
             console.error('Error creating meal plan:', error);
@@ -261,10 +293,18 @@ const FirebaseAPI = {
     
     async updateMealPlan(planId, planData) {
         try {
+            if (!planId) {
+                throw new Error('Plan ID is required');
+            }
+            if (!planData) {
+                throw new Error('Plan data is required');
+            }
+
             await this.db.collection('meal_plans').doc(planId).update({
                 ...planData,
                 updated_at: firebase.firestore.FieldValue.serverTimestamp()
             });
+
             return { id: planId, ...planData };
         } catch (error) {
             console.error('Error updating meal plan:', error);
@@ -366,6 +406,43 @@ const FirebaseAPI = {
         } catch (error) {
             console.error('Error updating rule:', error);
             throw error;
+        }
+    },
+
+    // ==========================================
+    // Connection Health Checks
+    // ==========================================
+
+    async checkConnection() {
+        try {
+            // Try to read a small document to test connection
+            const testRef = this.db.collection('_health').doc('test');
+            await testRef.get();
+            return { connected: true, timestamp: new Date() };
+        } catch (error) {
+            console.error('Firebase connection check failed:', error);
+            return { connected: false, error: error.message, timestamp: new Date() };
+        }
+    },
+
+    isAvailable() {
+        return !!(window.db || (typeof firebase !== 'undefined' && firebase.firestore));
+    },
+
+    async testConnection() {
+        if (!this.isAvailable()) {
+            return { success: false, message: 'Firebase not initialized' };
+        }
+
+        try {
+            const result = await this.checkConnection();
+            if (result.connected) {
+                return { success: true, message: 'Firebase connection healthy' };
+            } else {
+                return { success: false, message: result.error || 'Connection failed' };
+            }
+        } catch (error) {
+            return { success: false, message: error.message };
         }
     }
 };

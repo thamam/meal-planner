@@ -38,18 +38,30 @@ const dayLabels = {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🍱 Initializing Kids Meal Planner Enhanced...');
     
-    // Wait for Firebase to be ready
+    // Wait for Firebase to be ready with timeout
     if (!window.FirebaseAPI) {
         console.warn('⏳ Waiting for FirebaseAPI to load...');
-        await new Promise(resolve => {
-            const checkInterval = setInterval(() => {
-                if (window.FirebaseAPI) {
+        try {
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
                     clearInterval(checkInterval);
-                    console.log('✅ FirebaseAPI is ready');
-                    resolve();
-                }
-            }, 100);
-        });
+                    reject(new Error('Firebase initialization timeout after 10 seconds'));
+                }, 10000); // 10 second timeout
+
+                const checkInterval = setInterval(() => {
+                    if (window.FirebaseAPI) {
+                        clearInterval(checkInterval);
+                        clearTimeout(timeout);
+                        console.log('✅ FirebaseAPI is ready');
+                        resolve();
+                    }
+                }, 100);
+            });
+        } catch (error) {
+            console.error('❌ Firebase initialization failed:', error);
+            showMessage('⚠️ Unable to connect to database. App running in offline mode.', 'warning');
+            // Continue with app initialization but in offline mode
+        }
     }
     
     // Initialize language (FIRST - before any UI)
@@ -68,41 +80,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // Load data from database
-    await loadFoodItems();
-    await loadCompositeItems();
-    
-    if (currentUser) {
-        await loadCustomFoods();
-        await loadUserRules();
+    // Load data from database with error handling
+    try {
+        await loadFoodItems();
+        await loadCompositeItems();
+
+        if (currentUser) {
+            await loadCustomFoods();
+            await loadUserRules();
+        }
+    } catch (error) {
+        console.error('❌ Error loading initial data:', error);
+        showMessage('⚠️ Some data failed to load. App may have limited functionality.', 'warning');
     }
-    
+
     // Render food palette with categories
-    renderCategorizedFoodPalette();
-    
+    try {
+        renderCategorizedFoodPalette();
+    } catch (error) {
+        console.error('❌ Error rendering food palette:', error);
+        showMessage('⚠️ Error displaying food items', 'error');
+    }
+
     // Render weekly plan grid
-    renderWeeklyPlan();
-    
+    try {
+        renderWeeklyPlan();
+    } catch (error) {
+        console.error('❌ Error rendering weekly plan:', error);
+        showMessage('⚠️ Error displaying weekly plan', 'error');
+    }
+
     // Check if there's a saved meal plan to load
     if (currentUser) {
-        await autoLoadMealPlan();
-        // Initialize history with current state
-        if (window.AutoSave) {
-            AutoSave.saveToHistory(weeklyMeals);
+        try {
+            await autoLoadMealPlan();
+            // Initialize history with current state
+            if (window.AutoSave) {
+                AutoSave.saveToHistory(weeklyMeals);
+            }
+        } catch (error) {
+            console.error('❌ Error auto-loading meal plan:', error);
+            // Continue with empty meal plan
         }
     } else {
         // Show welcome screen for first-time users
-        showWelcomeScreen();
+        try {
+            showWelcomeScreen();
+        } catch (error) {
+            console.error('❌ Error showing welcome screen:', error);
+        }
     }
-    
+
     // Setup keyboard shortcuts
-    setupKeyboardShortcuts();
-    
+    try {
+        setupKeyboardShortcuts();
+    } catch (error) {
+        console.error('❌ Error setting up keyboard shortcuts:', error);
+    }
+
     // Update UI with current language
     if (window.updateLanguageUI) {
-        updateLanguageUI();
+        try {
+            updateLanguageUI();
+        } catch (error) {
+            console.error('❌ Error updating language UI:', error);
+        }
     }
-    
+
     console.log('✅ App initialized with enhanced features!');
 });
 
@@ -180,15 +224,24 @@ function loadUserFromStorage() {
 
 function updateUserDisplay() {
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userAge').textContent = currentUser.age;
-        document.getElementById('avatarDisplay').textContent = currentUser.avatar;
-        document.getElementById('userInfo').classList.remove('hidden');
+        const userName = document.getElementById('userName');
+        const userAge = document.getElementById('userAge');
+        const avatarDisplay = document.getElementById('avatarDisplay');
+        const userInfo = document.getElementById('userInfo');
+
+        if (userName) userName.textContent = currentUser.name;
+        if (userAge) userAge.textContent = currentUser.age;
+        if (avatarDisplay) avatarDisplay.textContent = currentUser.avatar;
+        if (userInfo) userInfo.classList.remove('hidden');
     }
 }
 
 function showProfileModal() {
     const modal = document.getElementById('profileModal');
+    if (!modal) {
+        console.error('❌ Profile modal not found');
+        return;
+    }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     
@@ -319,12 +372,13 @@ async function loadCompositeItems() {
         console.log(`✅ Loaded ${compositeItems.length} composite items`);
     } catch (error) {
         console.error('Error loading composite items:', error);
+        showMessage('❌ Error loading composite items', 'error');
     }
 }
 
 async function loadCustomFoods() {
     if (!currentUser) return;
-    
+
     try {
         const data = await FirebaseAPI.getCustomFoods(currentUser.id);
         customFoods = (data.data || []).filter(food => food.user_id === currentUser.id).map(food => ({
@@ -334,6 +388,7 @@ async function loadCustomFoods() {
         console.log(`✅ Loaded ${customFoods.length} custom foods`);
     } catch (error) {
         console.error('Error loading custom foods:', error);
+        showMessage('❌ Error loading your custom foods', 'error');
     }
 }
 
@@ -378,10 +433,14 @@ function renderWeeklyPlan() {
         
         // Add drop event listeners
         const slot = dayCard.querySelector('.meal-slot');
-        slot.addEventListener('drop', handleDrop);
-        slot.addEventListener('dragover', handleDragOver);
-        slot.addEventListener('dragleave', handleDragLeave);
-        
+        if (slot) {
+            slot.addEventListener('drop', handleDrop);
+            slot.addEventListener('dragover', handleDragOver);
+            slot.addEventListener('dragleave', handleDragLeave);
+        } else {
+            console.error('❌ Meal slot not found for day:', day);
+        }
+
         planContainer.appendChild(dayCard);
     });
     
@@ -583,12 +642,18 @@ function updateHealthMeter() {
         });
     });
     
-    // Update category counts
-    document.getElementById('proteinCount').textContent = categories.protein;
-    document.getElementById('veggieCount').textContent = categories.veggie;
-    document.getElementById('fruitCount').textContent = categories.fruit;
-    document.getElementById('grainCount').textContent = categories.grain;
-    document.getElementById('dairyCount').textContent = categories.dairy;
+    // Update category counts with null checks
+    const proteinCount = document.getElementById('proteinCount');
+    const veggieCount = document.getElementById('veggieCount');
+    const fruitCount = document.getElementById('fruitCount');
+    const grainCount = document.getElementById('grainCount');
+    const dairyCount = document.getElementById('dairyCount');
+
+    if (proteinCount) proteinCount.textContent = categories.protein;
+    if (veggieCount) veggieCount.textContent = categories.veggie;
+    if (fruitCount) fruitCount.textContent = categories.fruit;
+    if (grainCount) grainCount.textContent = categories.grain;
+    if (dairyCount) dairyCount.textContent = categories.dairy;
     
     // Calculate balance score
     let score = 0;
