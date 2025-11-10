@@ -16,16 +16,20 @@ let userRules = {
 
 async function loadUserRules(currentUser) {
     if (!currentUser) return userRules;
-    
+
     try {
-        const response = await fetch(`tables/rules?search=${currentUser.id}`);
-        const data = await response.json();
-        
+        if (!window.FirebaseAPI) {
+            console.warn('FirebaseAPI not available, using default rules');
+            return userRules;
+        }
+
+        const data = await FirebaseAPI.getRules(currentUser.id);
+
         // Start with defaults
         const rules = { ...userRules };
-        
+
         // Override with user's custom rules
-        if (data.data) {
+        if (data.data && Array.isArray(data.data)) {
             data.data.forEach(rule => {
                 if (rule.user_id === currentUser.id && rule.enabled) {
                     try {
@@ -36,11 +40,12 @@ async function loadUserRules(currentUser) {
                 }
             });
         }
-        
+
         userRules = rules;
         console.log('✅ Loaded user rules:', userRules);
         return rules;
     } catch (error) {
+        console.error('Error loading user rules:', error);
         console.log('Using default rules');
         return userRules;
     }
@@ -48,23 +53,30 @@ async function loadUserRules(currentUser) {
 
 async function saveUserRule(currentUser, ruleName, ruleValue, enabled = true) {
     if (!currentUser) return;
-    
+
     try {
-        await fetch('tables/rules', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                user_id: currentUser.id,
-                rule_name: ruleName,
-                rule_value: JSON.stringify(ruleValue),
-                enabled: enabled
-            })
-        });
-        
+        if (!window.FirebaseAPI) {
+            throw new Error('FirebaseAPI not available');
+        }
+
+        const ruleData = {
+            user_id: currentUser.id,
+            rule_name: ruleName,
+            rule_value: typeof ruleValue === 'string' ? ruleValue : JSON.stringify(ruleValue),
+            enabled: enabled
+        };
+
+        const result = await FirebaseAPI.createRule(ruleData);
+
+        if (!result || !result.id) {
+            throw new Error('Rule save did not return valid ID');
+        }
+
         userRules[ruleName] = ruleValue;
         console.log(`✅ Saved rule: ${ruleName} = ${ruleValue}`);
     } catch (error) {
         console.error('Error saving rule:', error);
+        throw error;
     }
 }
 

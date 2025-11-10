@@ -25,11 +25,16 @@ window.db = firebase.firestore();
 
 // Enable offline persistence for better UX
 window.db.enablePersistence()
+    .then(() => {
+        console.log('✅ Firebase offline persistence enabled');
+    })
     .catch((err) => {
         if (err.code === 'failed-precondition') {
-            console.warn('Multiple tabs open, persistence only works in one tab at a time.');
+            console.warn('⚠️ Multiple tabs open, persistence only works in one tab at a time.');
         } else if (err.code === 'unimplemented') {
-            console.warn('Browser doesn\'t support persistence.');
+            console.warn('⚠️ Browser doesn\'t support offline persistence.');
+        } else {
+            console.error('❌ Error enabling persistence:', err);
         }
     });
 

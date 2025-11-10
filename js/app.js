@@ -17,6 +17,7 @@ let weeklyMeals = {
     thursday: [],
     friday: []
 };
+let isLoadingMealPlan = false; // Prevent race conditions
 let selectedAvatar = '😊';
 let currentCompositeItem = null;
 let compositeSelections = {};
@@ -38,18 +39,32 @@ const dayLabels = {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🍱 Initializing Kids Meal Planner Enhanced...');
     
-    // Wait for Firebase to be ready
+    // Wait for Firebase to be ready with timeout
     if (!window.FirebaseAPI) {
         console.warn('⏳ Waiting for FirebaseAPI to load...');
-        await new Promise(resolve => {
-            const checkInterval = setInterval(() => {
-                if (window.FirebaseAPI) {
-                    clearInterval(checkInterval);
-                    console.log('✅ FirebaseAPI is ready');
-                    resolve();
-                }
-            }, 100);
-        });
+        try {
+            await new Promise((resolve, reject) => {
+                let checkInterval = null;
+
+                const timeout = setTimeout(() => {
+                    if (checkInterval) clearInterval(checkInterval);
+                    reject(new Error('Firebase initialization timeout after 10 seconds'));
+                }, 10000); // 10 second timeout
+
+                checkInterval = setInterval(() => {
+                    if (window.FirebaseAPI) {
+                        clearInterval(checkInterval);
+                        clearTimeout(timeout);
+                        console.log('✅ FirebaseAPI is ready');
+                        resolve();
+                    }
+                }, 100);
+            });
+        } catch (error) {
+            console.error('❌ Firebase initialization failed:', error);
+            showMessage('⚠️ Unable to connect to database. App running in offline mode.', 'warning');
+            // Continue with app initialization but in offline mode
+        }
     }
     
     // Initialize language (FIRST - before any UI)
@@ -68,41 +83,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // Load data from database
-    await loadFoodItems();
-    await loadCompositeItems();
-    
-    if (currentUser) {
-        await loadCustomFoods();
-        await loadUserRules();
+    // Load data from database with error handling
+    try {
+        await loadFoodItems();
+        await loadCompositeItems();
+
+        if (currentUser) {
+            await loadCustomFoods();
+            await loadUserRules();
+        }
+    } catch (error) {
+        console.error('❌ Error loading initial data:', error);
+        showMessage('⚠️ Some data failed to load. App may have limited functionality.', 'warning');
     }
-    
+
     // Render food palette with categories
-    renderCategorizedFoodPalette();
-    
+    try {
+        renderCategorizedFoodPalette();
+    } catch (error) {
+        console.error('❌ Error rendering food palette:', error);
+        showMessage('⚠️ Error displaying food items', 'error');
+    }
+
     // Render weekly plan grid
-    renderWeeklyPlan();
-    
+    try {
+        renderWeeklyPlan();
+    } catch (error) {
+        console.error('❌ Error rendering weekly plan:', error);
+        showMessage('⚠️ Error displaying weekly plan', 'error');
+    }
+
     // Check if there's a saved meal plan to load
     if (currentUser) {
-        await autoLoadMealPlan();
-        // Initialize history with current state
-        if (window.AutoSave) {
-            AutoSave.saveToHistory(weeklyMeals);
+        try {
+            await autoLoadMealPlan();
+            // Initialize history with current state
+            if (window.AutoSave) {
+                AutoSave.saveToHistory(weeklyMeals);
+            }
+        } catch (error) {
+            console.error('❌ Error auto-loading meal plan:', error);
+            // Continue with empty meal plan
         }
     } else {
         // Show welcome screen for first-time users
-        showWelcomeScreen();
+        try {
+            showWelcomeScreen();
+        } catch (error) {
+            console.error('❌ Error showing welcome screen:', error);
+        }
     }
-    
+
     // Setup keyboard shortcuts
-    setupKeyboardShortcuts();
-    
+    try {
+        setupKeyboardShortcuts();
+    } catch (error) {
+        console.error('❌ Error setting up keyboard shortcuts:', error);
+    }
+
     // Update UI with current language
     if (window.updateLanguageUI) {
-        updateLanguageUI();
+        try {
+            updateLanguageUI();
+        } catch (error) {
+            console.error('❌ Error updating language UI:', error);
+        }
     }
-    
+
     console.log('✅ App initialized with enhanced features!');
 });
 
@@ -160,22 +207,44 @@ function setupKeyboardShortcuts() {
 function loadUserFromStorage() {
     const savedUser = localStorage.getItem('mealPlannerUser');
     if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUserDisplay();
+        try {
+            const user = JSON.parse(savedUser);
+            // Validate required fields
+            if (!user.id || !user.name || !user.age || !user.avatar) {
+                console.warn('Invalid user data in localStorage');
+                localStorage.removeItem('mealPlannerUser');
+                return;
+            }
+            currentUser = user;
+            updateUserDisplay();
+        } catch (error) {
+            console.error('Error parsing user data from localStorage:', error);
+            localStorage.removeItem('mealPlannerUser');
+            currentUser = null;
+        }
     }
 }
 
 function updateUserDisplay() {
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userAge').textContent = currentUser.age;
-        document.getElementById('avatarDisplay').textContent = currentUser.avatar;
-        document.getElementById('userInfo').classList.remove('hidden');
+        const userName = document.getElementById('userName');
+        const userAge = document.getElementById('userAge');
+        const avatarDisplay = document.getElementById('avatarDisplay');
+        const userInfo = document.getElementById('userInfo');
+
+        if (userName) userName.textContent = currentUser.name;
+        if (userAge) userAge.textContent = currentUser.age;
+        if (avatarDisplay) avatarDisplay.textContent = currentUser.avatar;
+        if (userInfo) userInfo.classList.remove('hidden');
     }
 }
 
 function showProfileModal() {
     const modal = document.getElementById('profileModal');
+    if (!modal) {
+        console.error('❌ Profile modal not found');
+        return;
+    }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     
@@ -306,12 +375,13 @@ async function loadCompositeItems() {
         console.log(`✅ Loaded ${compositeItems.length} composite items`);
     } catch (error) {
         console.error('Error loading composite items:', error);
+        showMessage('❌ Error loading composite items', 'error');
     }
 }
 
 async function loadCustomFoods() {
     if (!currentUser) return;
-    
+
     try {
         const data = await FirebaseAPI.getCustomFoods(currentUser.id);
         customFoods = (data.data || []).filter(food => food.user_id === currentUser.id).map(food => ({
@@ -321,6 +391,7 @@ async function loadCustomFoods() {
         console.log(`✅ Loaded ${customFoods.length} custom foods`);
     } catch (error) {
         console.error('Error loading custom foods:', error);
+        showMessage('❌ Error loading your custom foods', 'error');
     }
 }
 
@@ -365,10 +436,14 @@ function renderWeeklyPlan() {
         
         // Add drop event listeners
         const slot = dayCard.querySelector('.meal-slot');
-        slot.addEventListener('drop', handleDrop);
-        slot.addEventListener('dragover', handleDragOver);
-        slot.addEventListener('dragleave', handleDragLeave);
-        
+        if (slot) {
+            slot.addEventListener('drop', handleDrop);
+            slot.addEventListener('dragover', handleDragOver);
+            slot.addEventListener('dragleave', handleDragLeave);
+        } else {
+            console.error('❌ Meal slot not found for day:', day);
+        }
+
         planContainer.appendChild(dayCard);
     });
     
@@ -570,12 +645,18 @@ function updateHealthMeter() {
         });
     });
     
-    // Update category counts
-    document.getElementById('proteinCount').textContent = categories.protein;
-    document.getElementById('veggieCount').textContent = categories.veggie;
-    document.getElementById('fruitCount').textContent = categories.fruit;
-    document.getElementById('grainCount').textContent = categories.grain;
-    document.getElementById('dairyCount').textContent = categories.dairy;
+    // Update category counts with null checks
+    const proteinCount = document.getElementById('proteinCount');
+    const veggieCount = document.getElementById('veggieCount');
+    const fruitCount = document.getElementById('fruitCount');
+    const grainCount = document.getElementById('grainCount');
+    const dairyCount = document.getElementById('dairyCount');
+
+    if (proteinCount) proteinCount.textContent = categories.protein;
+    if (veggieCount) veggieCount.textContent = categories.veggie;
+    if (fruitCount) fruitCount.textContent = categories.fruit;
+    if (grainCount) grainCount.textContent = categories.grain;
+    if (dairyCount) dairyCount.textContent = categories.dairy;
     
     // Calculate balance score
     let score = 0;
@@ -644,41 +725,77 @@ async function saveMealPlan(silent = false) {
         showProfileModal();
         return;
     }
-    
-    const today = new Date();
-    const weekStart = getMonday(today);
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
+        // Show loading state
+        if (!silent) {
+            const saveBtn = document.getElementById('btnSave');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                saveBtn.textContent = '💾 Saving...';
+            }
+        }
+
+        const today = new Date();
+        const weekStart = getMonday(today);
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+
+        // Get existing plans
         const plansData = await FirebaseAPI.getMealPlans(currentUser.id);
-        
-        const existingPlan = plansData.data ? plansData.data.find(p => 
+        if (!plansData) {
+            throw new Error('Failed to fetch existing meal plans');
+        }
+
+        const existingPlan = plansData.data ? plansData.data.find(p =>
             p.user_id === currentUser.id && p.week_start === weekStartStr
         ) : null;
-        
+
         const mealPlanData = {
             user_id: currentUser.id,
             week_start: weekStartStr,
             meals: JSON.stringify(weeklyMeals)
         };
-        
+
+        // Perform save
+        let result;
         if (existingPlan) {
-            await FirebaseAPI.updateMealPlan(existingPlan.id, mealPlanData);
+            result = await FirebaseAPI.updateMealPlan(existingPlan.id, mealPlanData);
         } else {
-            await FirebaseAPI.createMealPlan(mealPlanData);
+            result = await FirebaseAPI.createMealPlan(mealPlanData);
         }
-        
+
+        // Verify save was successful
+        if (!result || !result.id) {
+            throw new Error('Save operation did not return valid result');
+        }
+
+        // Verify data was persisted by fetching it back
+        const verification = await FirebaseAPI.getMealPlan(result.id);
+        if (!verification) {
+            throw new Error('Could not verify saved meal plan');
+        }
+
         if (!silent) {
             showMessage('💾 Meal plan saved successfully!', 'success');
             if (window.Sounds) Sounds.playSuccess();
         } else {
-            console.log('💾 Auto-saved meal plan');
+            console.log('💾 Auto-saved meal plan at', new Date().toLocaleTimeString());
         }
+
     } catch (error) {
         console.error('Error saving meal plan:', error);
+        showMessage('❌ Error saving meal plan: ' + (error.message || 'Unknown error'), 'error');
+        if (window.Sounds) Sounds.playError();
+    } finally {
+        // Restore button state
         if (!silent) {
-            showMessage('❌ Error saving meal plan', 'error');
-            if (window.Sounds) Sounds.playError();
+            const saveBtn = document.getElementById('btnSave');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = '1';
+                saveBtn.textContent = '💾 Save';
+            }
         }
     }
 }
@@ -689,11 +806,27 @@ async function loadMealPlan() {
         showProfileModal();
         return;
     }
-    
+
+    // Prevent race condition
+    if (isLoadingMealPlan) {
+        console.log('⚠️ Meal plan already loading, skipping duplicate request');
+        return;
+    }
+
+    isLoadingMealPlan = true;
+
+    // Show loading state
+    const loadBtn = document.getElementById('btnLoad');
+    if (loadBtn) {
+        loadBtn.disabled = true;
+        loadBtn.style.opacity = '0.5';
+        loadBtn.textContent = '📂 Loading...';
+    }
+
     const today = new Date();
     const weekStart = getMonday(today);
     const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
         const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
@@ -705,10 +838,22 @@ async function loadMealPlan() {
             if (window.AutoSave) {
                 AutoSave.setLoadingState(true);
             }
-            
-            weeklyMeals = JSON.parse(plan.meals);
+
+            try {
+                weeklyMeals = JSON.parse(plan.meals);
+            } catch (error) {
+                console.error('Error parsing meal plan data:', error);
+                showMessage('Error: Corrupted meal plan data. Starting fresh.', 'error');
+                weeklyMeals = {
+                    monday: [],
+                    tuesday: [],
+                    wednesday: [],
+                    thursday: [],
+                    friday: []
+                };
+            }
             updateWeeklyPlanDisplay();
-            
+
             if (window.AutoSave) {
                 AutoSave.clearHistory();
                 AutoSave.saveToHistory(weeklyMeals);
@@ -724,16 +869,33 @@ async function loadMealPlan() {
         console.error('Error loading meal plan:', error);
         showMessage('❌ Error loading meal plan', 'error');
         if (window.Sounds) Sounds.playError();
+    } finally {
+        isLoadingMealPlan = false;
+        // Restore button state
+        const loadBtn = document.getElementById('btnLoad');
+        if (loadBtn) {
+            loadBtn.disabled = false;
+            loadBtn.style.opacity = '1';
+            loadBtn.textContent = '📂 Load';
+        }
     }
 }
 
 async function autoLoadMealPlan() {
     if (!currentUser) return;
-    
+
+    // Prevent race condition
+    if (isLoadingMealPlan) {
+        console.log('⚠️ Meal plan already loading, skipping auto-load');
+        return;
+    }
+
+    isLoadingMealPlan = true;
+
     const today = new Date();
     const weekStart = getMonday(today);
     const weekStartStr = weekStart.toISOString().split('T')[0];
-    
+
     try {
         const data = await FirebaseAPI.getMealPlans(currentUser.id);
         
@@ -745,18 +907,31 @@ async function autoLoadMealPlan() {
             if (window.AutoSave) {
                 AutoSave.setLoadingState(true);
             }
-            
-            weeklyMeals = JSON.parse(plan.meals);
+
+            try {
+                weeklyMeals = JSON.parse(plan.meals);
+            } catch (error) {
+                console.error('Error parsing meal plan data:', error);
+                weeklyMeals = {
+                    monday: [],
+                    tuesday: [],
+                    wednesday: [],
+                    thursday: [],
+                    friday: []
+                };
+            }
             updateWeeklyPlanDisplay();
-            
+
             if (window.AutoSave) {
                 setTimeout(() => AutoSave.setLoadingState(false), 100);
             }
-            
+
             console.log('✅ Auto-loaded meal plan');
         }
     } catch (error) {
         console.error('Error auto-loading meal plan:', error);
+    } finally {
+        isLoadingMealPlan = false;
     }
 }
 
@@ -789,9 +964,7 @@ function clearWeek() {
 // ==========================================
 
 function switchTab(tab) {
-    // Password protection for parent view (DISABLED FOR DEVELOPMENT)
-    // TODO: Re-enable before publishing to production
-    /*
+    // Password protection for parent view - ENABLED
     if (tab === 'parent') {
         const password = prompt('🔒 Parent Password Required:\n\nEnter the password to access Parent View:');
         if (password !== '1580') {
@@ -800,13 +973,12 @@ function switchTab(tab) {
             return; // Don't switch tabs
         }
     }
-    */
-    
+
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active', 'bg-white', 'text-purple-600');
         btn.classList.add('bg-purple-100', 'text-purple-600');
     });
-    
+
     if (tab === 'planner') {
         document.getElementById('tab-planner').classList.add('active', 'bg-white');
         document.getElementById('plannerTab').classList.remove('hidden');
@@ -817,7 +989,7 @@ function switchTab(tab) {
         document.getElementById('parentTab').classList.remove('hidden');
         updateParentView();
     }
-    
+
     if (window.Sounds) Sounds.playClick();
 }
 
@@ -982,22 +1154,25 @@ function getMonday(date) {
 function showMessage(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `fixed top-4 right-4 px-6 py-4 rounded-full shadow-2xl text-white font-semibold z-50 animate-bounce`;
-    
+
     const colors = {
         success: 'bg-green-500',
         error: 'bg-red-500',
         warning: 'bg-yellow-500',
         info: 'bg-blue-500'
     };
-    
+
     toast.classList.add(colors[type] || colors.info);
     toast.textContent = message;
-    
+
     document.body.appendChild(toast);
-    
+
+    // Longer duration for better readability (5s for important messages, 4s for others)
+    const duration = (type === 'error' || type === 'warning') ? 5000 : 4000;
+
     setTimeout(() => {
         toast.remove();
-    }, 3000);
+    }, duration);
 }
 
 // ==========================================
@@ -1022,16 +1197,18 @@ function openCompositeBuilder(compositeItem, targetDay = null) {
     try {
         steps = JSON.parse(compositeItem.steps);
     } catch (e) {
-        console.error('Error parsing steps:', e);
+        console.error('Error parsing composite steps:', e);
+        showMessage('❌ Error: Invalid composite builder format', 'error');
         return;
     }
-    
+
     // Parse ingredients map
     let ingredientsMap = {};
     try {
         ingredientsMap = JSON.parse(compositeItem.ingredients_map);
     } catch (e) {
         console.error('Error parsing ingredients map:', e);
+        showMessage('❌ Error: Invalid composite ingredients', 'error');
         return;
     }
     
@@ -1111,6 +1288,8 @@ function updateBuilderPreview() {
     try {
         steps = JSON.parse(currentCompositeItem.steps);
     } catch (e) {
+        console.error('Error parsing composite steps:', e);
+        showMessage('❌ Error: Invalid composite format', 'error');
         return;
     }
     
@@ -1514,6 +1693,7 @@ function openEditComposite(compositeId) {
         ingredientsMap = JSON.parse(composite.ingredients_map);
     } catch (e) {
         console.error('Error parsing composite data:', e);
+        showMessage('❌ Error: Invalid composite data format', 'error');
         return;
     }
     
