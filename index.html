@@ -645,11 +645,20 @@
     <!-- Firebase SDK (v9 compat mode) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
+
     <!-- Firebase Configuration -->
     <script src="js/firebase-config.js"></script>
     <script src="js/firebase-api.js"></script>
-    
+
+    <!-- Core utilities (load these FIRST) -->
+    <script src="js/utils/security.js"></script>
+    <script src="js/utils/error-handler.js"></script>
+    <script src="js/utils/modal.js"></script>
+    <script src="js/utils/state-manager.js"></script>
+    <script src="js/utils/auth.js"></script>
+    <script src="js/utils/mobile-support.js"></script>
+    <script src="js/utils/offline-support.js"></script>
+
     <!-- Load app modules -->
     <script src="js/modules/i18n.js"></script>
     <script src="js/modules/autosave-undo.js"></script>
@@ -657,8 +666,11 @@
     <script src="js/modules/sounds.js"></script>
     <script src="js/modules/guidance.js"></script>
     <script src="js/modules/categorized-view.js"></script>
-    
+
     <!-- Then load main app -->
     <script src="js/app.js"></script>
+
+    <!-- Apply improvements (must load AFTER app.js) -->
+    <script src="js/app-improvements.js"></script>
 </body>
 </html>
