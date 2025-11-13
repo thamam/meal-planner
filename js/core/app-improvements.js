@@ -19,60 +19,60 @@ async function saveProfile_IMPROVED() {
     const age = document.getElementById('profileAge').value;
 
     // Validate inputs using Security module
-    if (!Security.isValidName(name)) {
-        await Modal.error('Please enter a valid name (letters only, 1-50 characters)');
-        if (window.Sounds) Sounds.playError();
+    if (!window.Security || !window.Security.isValidName(name)) {
+        await window.Modal.error('Please enter a valid name (letters only, 1-50 characters)');
+        if (window.Sounds) window.Sounds.playError();
         return;
     }
 
     const ageNum = parseInt(age);
-    if (!Security.isValidAge(ageNum)) {
-        await Modal.error('Age must be between 4 and 12 years');
-        if (window.Sounds) Sounds.playError();
+    if (!window.Security.isValidAge(ageNum)) {
+        await window.Modal.error('Age must be between 4 and 12 years');
+        if (window.Sounds) window.Sounds.playError();
         return;
     }
 
-    if (!Security.isValidEmoji(selectedAvatar)) {
-        await Modal.error('Please select a valid avatar');
-        if (window.Sounds) Sounds.playError();
+    if (!window.Security.isValidEmoji(window.selectedAvatar)) {
+        await window.Modal.error('Please select a valid avatar');
+        if (window.Sounds) window.Sounds.playError();
         return;
     }
 
     // Sanitize inputs
-    const sanitizedName = Security.sanitizeInput(name);
+    const sanitizedName = window.Security.sanitizeInput(name);
 
     // Save sound preferences
     let preferences = '{}';
     if (window.Sounds) {
-        preferences = Sounds.saveSoundPreferences(currentUser) || '{}';
+        preferences = window.Sounds.saveSoundPreferences(window.currentUser) || '{}';
     }
 
     // Create user data with validation
     const userData = {
         name: sanitizedName,
         age: ageNum,
-        avatar: selectedAvatar,
+        avatar: window.selectedAvatar,
         preferences: preferences
     };
 
     // Validate against schema
-    const validation = validateSchema(userData, {
-        name: (v) => Security.isValidName(v),
-        age: (v) => Security.isValidAge(v),
-        avatar: (v) => Security.isValidEmoji(v),
+    const validation = window.validateSchema(userData, {
+        name: (v) => window.Security.isValidName(v),
+        age: (v) => window.Security.isValidAge(v),
+        avatar: (v) => window.Security.isValidEmoji(v),
         preferences: (v) => typeof v === 'string'
     });
 
     if (!validation.valid) {
-        await Modal.error(`Validation failed: ${validation.message}`);
-        if (window.Sounds) Sounds.playError();
+        await window.Modal.error(`Validation failed: ${validation.message}`);
+        if (window.Sounds) window.Sounds.playError();
         return;
     }
 
     // Use ErrorHandler for async operation
-    const savedUser = await ErrorHandler.handleAsync(async () => {
+    const savedUser = await window.ErrorHandler.handleAsync(async () => {
         if (!window.FirebaseAPI) {
-            throw ErrorHandler.createError(
+            throw window.ErrorHandler.createError(
                 'FirebaseAPI is not loaded. Please refresh the page.',
                 'FIREBASE_NOT_LOADED'
             );
@@ -81,12 +81,12 @@ async function saveProfile_IMPROVED() {
         console.log('Attempting to save user:', userData);
         let result;
 
-        if (currentUser && currentUser.id) {
-            console.log('Updating existing user:', currentUser.id);
-            result = await FirebaseAPI.updateUser(currentUser.id, userData);
+        if (window.currentUser && window.currentUser.id) {
+            console.log('Updating existing user:', window.currentUser.id);
+            result = await window.FirebaseAPI.updateUser(window.currentUser.id, userData);
         } else {
             console.log('Creating new user');
-            result = await FirebaseAPI.createUser(userData);
+            result = await window.FirebaseAPI.createUser(userData);
         }
 
         return result;
@@ -94,29 +94,29 @@ async function saveProfile_IMPROVED() {
 
     if (!savedUser) {
         // Error already shown by ErrorHandler
-        if (window.Sounds) Sounds.playError();
+        if (window.Sounds) window.Sounds.playError();
         return;
     }
 
     console.log('User saved successfully:', savedUser);
 
-    currentUser = { ...userData, id: savedUser.id };
+    window.currentUser = { ...userData, id: savedUser.id };
 
     // Save to localStorage with error handling
-    ErrorHandler.handleSync(() => {
-        localStorage.setItem('mealPlannerUser', JSON.stringify(currentUser));
+    window.ErrorHandler.handleSync(() => {
+        localStorage.setItem('mealPlannerUser', JSON.stringify(window.currentUser));
     }, null, false);
 
     // Load user-specific data
-    await loadCustomFoods();
-    await loadUserRules();
-    renderCategorizedFoodPalette();
+    await window.loadCustomFoods();
+    await window.loadUserRules();
+    window.renderCategorizedFoodPalette();
 
-    updateUserDisplay();
-    closeProfileModal();
+    window.updateUserDisplay();
+    window.closeProfileModal();
 
-    showMessage('👤 Profile saved! Welcome, ' + sanitizedName + '!', 'success');
-    if (window.Sounds) Sounds.playSuccess();
+    window.showMessage('👤 Profile saved! Welcome, ' + sanitizedName + '!', 'success');
+    if (window.Sounds) window.Sounds.playSuccess();
 }
 
 // ==========================================
@@ -130,7 +130,7 @@ async function saveProfile_IMPROVED() {
 async function switchTab_IMPROVED(tab) {
     // If switching to parent view, require authentication
     if (tab === 'parent') {
-        const authorized = await Auth.requireParentAuth();
+        const authorized = await window.Auth.requireParentAuth();
 
         if (!authorized) {
             // User cancelled or authentication failed
@@ -152,10 +152,10 @@ async function switchTab_IMPROVED(tab) {
         document.getElementById('tab-parent').classList.add('active', 'bg-white');
         document.getElementById('plannerTab').classList.add('hidden');
         document.getElementById('parentTab').classList.remove('hidden');
-        updateParentView();
+        window.updateParentView();
     }
 
-    if (window.Sounds) Sounds.playClick();
+    if (window.Sounds) window.Sounds.playClick();
 }
 
 // ==========================================
@@ -167,7 +167,7 @@ async function switchTab_IMPROVED(tab) {
  * REPLACES: function clearWeek() in app.js (line 938)
  */
 async function clearWeek_IMPROVED() {
-    const confirmed = await Modal.confirm(
+    const confirmed = await window.Modal.confirm(
         'Are you sure you want to clear all meals for this week? This action cannot be undone!',
         'Clear Week',
         {
@@ -184,24 +184,24 @@ async function clearWeek_IMPROVED() {
     }
 
     if (window.AutoSave) {
-        AutoSave.saveToHistory(weeklyMeals);
+        window.AutoSave.saveToHistory(window.weeklyMeals);
     }
 
-    weeklyMeals = {
+    window.weeklyMeals = {
         monday: [],
         tuesday: [],
         wednesday: [],
         thursday: [],
         friday: []
     };
-    updateWeeklyPlanDisplay();
+    window.updateWeeklyPlanDisplay();
 
     if (window.AutoSave) {
-        AutoSave.triggerAutoSave(saveMealPlan, currentUser);
+        window.AutoSave.triggerAutoSave(window.saveMealPlan, window.currentUser);
     }
 
-    showMessage('🗑️ Week cleared!', 'info');
-    if (window.Sounds) Sounds.playClick();
+    window.showMessage('🗑️ Week cleared!', 'info');
+    if (window.Sounds) window.Sounds.playClick();
 }
 
 // ==========================================
@@ -274,10 +274,10 @@ async function saveCustomFood_IMPROVED() {
     customFoods.push(savedFood);
 
     // Re-render
-    renderCategorizedFoodPalette();
-    renderCustomFoodsList();
+    window.renderCategorizedFoodPalette();
+    window.renderCustomFoodsList();
 
-    closeAddCustomFoodForm();
+    window.closeAddCustomFoodForm();
     await Modal.success(`Added ${sanitizedName} to your palette!`);
     if (window.Sounds) Sounds.playSuccess();
 }
@@ -329,10 +329,10 @@ async function deleteCustomFood_IMPROVED(foodId) {
     customFoods = customFoods.filter(f => f.id !== foodId);
 
     // Re-render
-    renderCategorizedFoodPalette();
-    renderCustomFoodsList();
+    window.renderCategorizedFoodPalette();
+    window.renderCustomFoodsList();
 
-    showMessage('🗑️ Custom food deleted!', 'info');
+    window.showMessage('🗑️ Custom food deleted!', 'info');
     if (window.Sounds) Sounds.playClick();
 }
 
@@ -371,7 +371,7 @@ function loadUserFromStorage_IMPROVED() {
         user.name = Security.sanitizeInput(user.name);
 
         currentUser = user;
-        updateUserDisplay();
+        window.updateUserDisplay();
     }, null, false);
 }
 
@@ -395,7 +395,7 @@ async function showParentSettings_IMPROVED() {
     modal.classList.add('flex');
 
     // Load current settings
-    loadParentSettingsUI();
+    window.loadParentSettingsUI();
 
     if (window.Sounds) Sounds.playClick();
 }
