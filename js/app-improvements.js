@@ -59,7 +59,8 @@ async function saveProfile_IMPROVED() {
     const validation = validateSchema(userData, {
         name: (v) => Security.isValidName(v),
         age: (v) => Security.isValidAge(v),
-        avatar: (v) => Security.isValidEmoji(v)
+        avatar: (v) => Security.isValidEmoji(v),
+        preferences: (v) => typeof v === 'string'
     });
 
     if (!validation.valid) {

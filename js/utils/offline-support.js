@@ -11,6 +11,7 @@ const OfflineSupport = {
     pendingOperations: [],
     maxPendingOps: 50,
     statusIndicator: null,
+    operationRegistry: {}, // Registry of serializable operations
 
     /**
      * Initialize offline support
@@ -30,6 +31,9 @@ const OfflineSupport = {
 
         // Initial status
         this.updateStatusIndicator();
+
+        // Load any pending operations from previous session
+        this.loadQueue();
 
         console.log(`🌐 Offline support initialized - Status: ${this.isOnline ? 'Online' : 'Offline'}`);
     },
@@ -137,38 +141,60 @@ const OfflineSupport = {
     },
 
     /**
+     * Register a serializable operation type
+     * @param {string} type - Operation type identifier
+     * @param {Function} handler - Function that takes data and returns a Promise
+     */
+    registerOperation(type, handler) {
+        this.operationRegistry[type] = handler;
+        console.log(`📝 Registered operation type: ${type}`);
+    },
+
+    /**
      * Queue operation for later execution
-     * @param {Function} operation - Async operation to queue
+     * @param {Function|Object} operation - Async operation function OR operation descriptor {type, data}
      * @param {string} description - Human-readable description
      * @returns {Promise} Promise that resolves when operation completes (now or later)
      */
     async queueOperation(operation, description = 'Operation') {
+        // Determine if operation is serializable (object descriptor) or function
+        const isSerializable = typeof operation === 'object' && operation.type;
+
         if (this.isOnline) {
             // If online, execute immediately
             try {
-                return await operation();
+                if (isSerializable) {
+                    const handler = this.operationRegistry[operation.type];
+                    if (!handler) {
+                        throw new Error(`Unknown operation type: ${operation.type}`);
+                    }
+                    return await handler(operation.data);
+                } else {
+                    return await operation();
+                }
             } catch (error) {
                 // If fails due to network, queue it
                 if (this.isNetworkError(error)) {
                     console.warn('Network error, queueing operation:', description);
-                    return this.addToPending(operation, description);
+                    return this.addToPending(operation, description, isSerializable);
                 }
                 throw error;
             }
         } else {
             // If offline, queue it
             console.log('Offline, queueing operation:', description);
-            return this.addToPending(operation, description);
+            return this.addToPending(operation, description, isSerializable);
         }
     },
 
     /**
      * Add operation to pending queue
-     * @param {Function} operation - Operation to queue
+     * @param {Function|Object} operation - Operation to queue (function or descriptor)
      * @param {string} description - Description
+     * @param {boolean} isSerializable - Whether operation can be serialized
      * @returns {Promise} Promise that resolves when operation completes
      */
-    addToPending(operation, description) {
+    addToPending(operation, description, isSerializable = false) {
         return new Promise((resolve, reject) => {
             // Check queue size
             if (this.pendingOperations.length >= this.maxPendingOps) {
@@ -177,23 +203,27 @@ const OfflineSupport = {
             }
 
             // Add to queue
-            this.pendingOperations.push({
+            const pendingOp = {
                 operation,
                 description,
                 resolve,
                 reject,
-                timestamp: Date.now()
-            });
+                timestamp: Date.now(),
+                isSerializable
+            };
+
+            this.pendingOperations.push(pendingOp);
 
             console.log(`📥 Queued: ${description} (${this.pendingOperations.length} pending)`);
 
-            // Save queue to localStorage
+            // Save queue to localStorage (only serializable operations persist)
             this.saveQueue();
 
             // Show feedback
             if (window.showMessage) {
+                const warningNote = !isSerializable ? ' (will be lost on refresh)' : '';
                 window.showMessage(
-                    `💾 ${description} saved for later (${this.pendingOperations.length} pending)`,
+                    `💾 ${description} saved for later${warningNote} (${this.pendingOperations.length} pending)`,
                     'info'
                 );
             }
@@ -219,8 +249,20 @@ const OfflineSupport = {
 
         for (const pending of operations) {
             try {
-                const result = await pending.operation();
-                pending.resolve(result);
+                let result;
+
+                // Execute operation based on type
+                if (pending.isSerializable) {
+                    const handler = this.operationRegistry[pending.operation.type];
+                    if (!handler) {
+                        throw new Error(`Unknown operation type: ${pending.operation.type}`);
+                    }
+                    result = await handler(pending.operation.data);
+                } else {
+                    result = await pending.operation();
+                }
+
+                if (pending.resolve) pending.resolve(result);
                 successCount++;
                 console.log(`✅ Processed: ${pending.description}`);
             } catch (error) {
@@ -230,7 +272,7 @@ const OfflineSupport = {
                 if (this.isNetworkError(error)) {
                     this.pendingOperations.push(pending);
                 } else {
-                    pending.reject(error);
+                    if (pending.reject) pending.reject(error);
                     failCount++;
                 }
             }
@@ -282,40 +324,103 @@ const OfflineSupport = {
 
     /**
      * Save pending queue to localStorage
+     * Only serializable operations are saved; non-serializable operations are lost on page refresh
      */
     saveQueue() {
         try {
-            // Can't serialize functions, so just save metadata
-            const metadata = this.pendingOperations.map(op => ({
-                description: op.description,
-                timestamp: op.timestamp
-            }));
+            // Filter for serializable operations only
+            const serializableOps = this.pendingOperations
+                .filter(op => op.isSerializable)
+                .map(op => ({
+                    operation: op.operation, // This is already a {type, data} object
+                    description: op.description,
+                    timestamp: op.timestamp,
+                    isSerializable: true
+                }));
 
-            localStorage.setItem('pending_operations', JSON.stringify(metadata));
+            if (serializableOps.length > 0) {
+                localStorage.setItem('pending_operations', JSON.stringify(serializableOps));
+                console.log(`💾 Saved ${serializableOps.length} serializable operations to localStorage`);
+            } else {
+                localStorage.removeItem('pending_operations');
+            }
+
+            // Log warning for non-serializable operations
+            const nonSerializableCount = this.pendingOperations.length - serializableOps.length;
+            if (nonSerializableCount > 0) {
+                console.warn(`⚠️ ${nonSerializableCount} non-serializable operation(s) will be lost on page refresh`);
+            }
         } catch (error) {
             console.error('Error saving pending queue:', error);
         }
     },
 
     /**
-     * Load pending queue from localStorage (metadata only)
+     * Load pending queue from localStorage
+     * Reconstructs serializable operations from saved descriptors
      */
     loadQueue() {
         try {
             const stored = localStorage.getItem('pending_operations');
-            if (stored) {
-                const metadata = JSON.parse(stored);
-                console.log(`📥 Found ${metadata.length} pending operations from previous session`);
+            if (!stored) {
+                return;
+            }
 
-                if (metadata.length > 0 && window.showMessage) {
+            const savedOps = JSON.parse(stored);
+            if (!Array.isArray(savedOps) || savedOps.length === 0) {
+                return;
+            }
+
+            console.log(`📥 Loading ${savedOps.length} pending operations from previous session`);
+
+            // Reconstruct pending operations
+            let restoredCount = 0;
+            for (const savedOp of savedOps) {
+                // Verify operation type is registered
+                if (!savedOp.operation || !savedOp.operation.type) {
+                    console.warn(`⚠️ Skipping invalid saved operation:`, savedOp);
+                    continue;
+                }
+
+                if (!this.operationRegistry[savedOp.operation.type]) {
+                    console.warn(`⚠️ Skipping operation with unregistered type: ${savedOp.operation.type}`);
+                    continue;
+                }
+
+                // Create a new promise for this operation
+                const promise = new Promise((resolve, reject) => {
+                    this.pendingOperations.push({
+                        operation: savedOp.operation,
+                        description: savedOp.description,
+                        timestamp: savedOp.timestamp,
+                        isSerializable: true,
+                        resolve,
+                        reject
+                    });
+                });
+
+                restoredCount++;
+            }
+
+            if (restoredCount > 0) {
+                console.log(`✅ Restored ${restoredCount} pending operations`);
+
+                if (window.showMessage) {
                     window.showMessage(
-                        `ℹ️ You have ${metadata.length} pending change${metadata.length > 1 ? 's' : ''} from offline mode`,
+                        `ℹ️ You have ${restoredCount} pending change${restoredCount > 1 ? 's' : ''} from offline mode`,
                         'info'
                     );
+                }
+
+                // If online, process them immediately
+                if (this.isOnline) {
+                    setTimeout(() => this.processPendingOperations(), 1000);
                 }
             }
         } catch (error) {
             console.error('Error loading pending queue:', error);
+            // Clear corrupted data
+            localStorage.removeItem('pending_operations');
         }
     },
 
@@ -373,11 +478,9 @@ const OfflineSupport = {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         OfflineSupport.init();
-        OfflineSupport.loadQueue();
     });
 } else {
     OfflineSupport.init();
-    OfflineSupport.loadQueue();
 }
 
 // Export for use in other modules
