@@ -659,6 +659,10 @@
     <script src="js/utils/mobile-support.js"></script>
     <script src="js/utils/offline-support.js"></script>
 
+    <!-- CRITICAL FIXES (must load early) -->
+    <script src="js/utils/async-lock.js"></script>
+    <script src="js/utils/event-manager.js"></script>
+
     <!-- Load app modules -->
     <script src="js/modules/i18n.js"></script>
     <script src="js/modules/autosave-undo.js"></script>
@@ -672,5 +676,8 @@
 
     <!-- Apply improvements (must load AFTER app.js) -->
     <script src="js/app-improvements.js"></script>
+
+    <!-- Apply critical fixes (must load LAST) -->
+    <script src="js/critical-fixes.js"></script>
 </body>
 </html>
