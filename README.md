@@ -17,7 +17,7 @@ A fun, interactive weekly meal planner designed for children aged 4-12. This app
 
 ## 🚀 Quick Start
 
-### Option 1: Open Locally (Simplest)
+### Option 1: Launch from Terminal (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -25,9 +25,22 @@ A fun, interactive weekly meal planner designed for children aged 4-12. This app
    cd meal-planner
    ```
 
-2. **Open in browser**
-   - Simply double-click `index.html` or
-   - Open `index.html` in your browser
+2. **Start the app**
+   ```bash
+   ./start.sh
+   ```
+
+   Or manually with Python:
+   ```bash
+   python3 -m http.server 8000
+   # Then open http://localhost:8000
+   ```
+
+   Or with Node.js:
+   ```bash
+   npx http-server -p 8000
+   # Then open http://localhost:8000
+   ```
 
 3. **Start planning!**
    - Create a user profile
@@ -36,7 +49,14 @@ A fun, interactive weekly meal planner designed for children aged 4-12. This app
 
 > **Note**: Running locally will use mock data. For persistent storage across devices, set up Firebase (see below).
 
-### Option 2: With Firebase (Recommended for Production)
+### Option 2: Open Directly (Simple)
+
+- Simply double-click `index.html` or
+- Open `index.html` in your browser
+
+> **Note**: Some browsers may block certain features when opening HTML files directly. Using a local server (Option 1) is recommended.
+
+### Option 3: With Firebase (Recommended for Production)
 
 1. **Set up Firebase**
    - Follow the [Firebase Setup Guide](docs/setup/FIREBASE_SETUP_GUIDE.md)
