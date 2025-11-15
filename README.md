@@ -12,6 +12,8 @@ A fun, interactive weekly meal planner designed for children aged 4-12. This app
 - **Offline Support**: Queue changes when offline, sync when reconnected
 - **Auto-save & Undo**: Automatic saving with undo/redo functionality
 - **Mobile Friendly**: Touch-optimized for tablets and phones
+- **Android App**: Native Android app with offline support
+- **Progressive Web App (PWA)**: Installable on mobile devices
 - **Sound Effects**: Optional audio feedback for actions
 - **Print Support**: Print weekly meal plans
 
@@ -73,6 +75,41 @@ A fun, interactive weekly meal planner designed for children aged 4-12. This app
 4. **Deploy**
    - Upload to your web server or use Firebase Hosting
    - See [Getting Started Guide](docs/setup/GETTING_STARTED.md)
+
+### Option 4: Android App 📱
+
+Build and install the native Android app:
+
+1. **Prerequisites**
+   - Java 17+ installed
+   - Android SDK (optional, for advanced features)
+
+2. **Build the APK**
+   ```bash
+   cd android
+   ./build-android.sh
+   ```
+
+3. **Install on device**
+   ```bash
+   ./build-android.sh --install
+   ```
+
+   Or manually:
+   ```bash
+   adb install -r meal-planner-debug.apk
+   ```
+
+4. **For detailed instructions**
+   - See [Android App README](android/README.md)
+
+**Features:**
+- ✅ Native Android app experience
+- ✅ Offline support with caching
+- ✅ Pull to refresh
+- ✅ Splash screen
+- ✅ Back button navigation
+- ✅ Deep linking support
 
 ## 📚 Documentation
 
