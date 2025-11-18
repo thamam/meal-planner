@@ -77,9 +77,14 @@ const Security = {
     isValidEmoji(emoji) {
         if (!emoji || typeof emoji !== 'string') return false;
 
-        // Check if it's a valid emoji (Unicode emoji ranges)
-        const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)$/u;
-        return emojiRegex.test(emoji.trim());
+        const trimmed = emoji.trim();
+
+        // Check length (emojis can be 1-8 characters due to multi-byte encoding)
+        if (trimmed.length === 0 || trimmed.length > 8) return false;
+
+        // More lenient emoji regex that works with all common emojis
+        const emojiRegex = /^[\p{Emoji}\u200d\ufe0f]+$/u;
+        return emojiRegex.test(trimmed);
     },
 
     /**
