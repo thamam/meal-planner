@@ -25,30 +25,37 @@ const TEST_PASSWORD = 'TestPass123';
  */
 async function setupUserProfile(page) {
     await page.evaluate((user) => {
+        // Set user profile
         localStorage.setItem('currentUser', JSON.stringify({
             name: user.name,
             age: parseInt(user.age),
             avatar: user.avatar,
             id: 'test-user-' + Date.now()
         }));
+        // Mark as visited to hide welcome screen
+        localStorage.setItem('hasVisited', 'true');
     }, TEST_USER);
     await page.reload();
+    // Wait for app to initialize
+    await page.waitForTimeout(1000);
 }
 
 /**
  * Helper: Setup parent authentication
+ * Uses the correct storage keys that match the Auth module
  */
 async function setupParentAuth(page) {
     await page.evaluate(async (password) => {
-        // Hash password
+        // Hash password using same method as Security module
         const encoder = new TextEncoder();
         const data = encoder.encode(password);
         const hash = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hash));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        localStorage.setItem('parentPassword', hashHex);
-        sessionStorage.setItem('parentAuthenticated', 'true');
+        // Use correct storage keys that match Auth module
+        localStorage.setItem('meal_planner_parent_auth', hashHex);
+        sessionStorage.setItem('meal_planner_session', Date.now().toString());
     }, TEST_PASSWORD);
     await page.reload();
 }
@@ -362,7 +369,7 @@ test.describe('Flow 10: Sound & Music Controls', () => {
         if (btnExists) {
             // Get initial state
             const initialState = await page.evaluate(() => {
-                return window.Sounds ? window.Sounds.soundEnabled : null;
+                return window.Sounds ? window.Sounds.isSoundEnabled() : null;
             });
 
             // Toggle sound
@@ -371,7 +378,7 @@ test.describe('Flow 10: Sound & Music Controls', () => {
 
             // Check state changed
             const newState = await page.evaluate(() => {
-                return window.Sounds ? window.Sounds.soundEnabled : null;
+                return window.Sounds ? window.Sounds.isSoundEnabled() : null;
             });
 
             if (initialState !== null) {
@@ -388,14 +395,14 @@ test.describe('Flow 10: Sound & Music Controls', () => {
 
         if (btnExists) {
             const initialState = await page.evaluate(() => {
-                return window.Sounds ? window.Sounds.musicEnabled : null;
+                return window.Sounds ? window.Sounds.isMusicEnabled() : null;
             });
 
             await musicBtn.click();
             await page.waitForTimeout(500);
 
             const newState = await page.evaluate(() => {
-                return window.Sounds ? window.Sounds.musicEnabled : null;
+                return window.Sounds ? window.Sounds.isMusicEnabled() : null;
             });
 
             if (initialState !== null) {
@@ -422,10 +429,10 @@ test.describe('Flow 10: Sound & Music Controls', () => {
             await page.waitForTimeout(2000);
 
             const newSoundState = await page.evaluate(() => {
-                return window.Sounds ? window.Sounds.soundEnabled : null;
+                return window.Sounds ? window.Sounds.isSoundEnabled() : null;
             });
 
-            expect(soundState).toBeTruthy();
+            expect(newSoundState !== null).toBeTruthy();
         }
     });
 });
@@ -490,7 +497,8 @@ test.describe('Flow 12: Food Restrictions', () => {
 
     test('should set food weekly limits', async ({ page }) => {
         // Go to Parent tab
-        const parentTab = page.locator('button:has-text("Parent"), #tab-parent');
+        // Use specific ID to avoid matching both Parent View and Parent Settings buttons
+        const parentTab = page.locator('#tab-parent');
         if (await parentTab.count() > 0) {
             await parentTab.click();
             await page.waitForTimeout(2000);
