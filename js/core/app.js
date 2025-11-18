@@ -19,6 +19,7 @@ let weeklyMeals = {
 };
 let isLoadingMealPlan = false; // Prevent race conditions
 let selectedAvatar = '😊';
+window.selectedAvatar = '😊'; // CRITICAL: Also expose on window for app-improvements.js
 let currentCompositeItem = null;
 let compositeSelections = {};
 
@@ -253,6 +254,7 @@ function showProfileModal() {
         document.getElementById('profileName').value = currentUser.name || '';
         document.getElementById('profileAge').value = currentUser.age || '';
         selectedAvatar = currentUser.avatar || '😊';
+        window.selectedAvatar = selectedAvatar; // CRITICAL: Also set on window
     }
     
     if (window.Sounds) Sounds.playClick();
@@ -268,11 +270,12 @@ function closeProfileModal() {
 
 function selectAvatar(emoji) {
     selectedAvatar = emoji;
+    window.selectedAvatar = emoji;  // CRITICAL: Also set on window for app-improvements.js
     document.querySelectorAll('.avatar-option').forEach(btn => {
         btn.style.background = '';
     });
     event.target.style.background = '#e9d5ff';
-    
+
     if (window.Sounds) Sounds.playClick();
 }
 
