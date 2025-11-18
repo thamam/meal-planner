@@ -117,11 +117,22 @@ const Modal = {
 
                             // Validate if validator provided
                             if (validator) {
-                                const validation = validator(value);
-                                if (!validation.valid) {
+                                try {
+                                    const validation = validator(value);
+                                    if (!validation.valid) {
+                                        const errorDiv = document.getElementById('modal-prompt-error');
+                                        if (errorDiv) {
+                                            errorDiv.textContent = validation.message;
+                                            errorDiv.classList.remove('hidden');
+                                        }
+                                        return; // Don't close modal
+                                    }
+                                } catch (error) {
+                                    // Handle validator errors gracefully
+                                    console.error('Validator error:', error);
                                     const errorDiv = document.getElementById('modal-prompt-error');
                                     if (errorDiv) {
-                                        errorDiv.textContent = validation.message;
+                                        errorDiv.textContent = 'Validation error: ' + error.message;
                                         errorDiv.classList.remove('hidden');
                                     }
                                     return; // Don't close modal
