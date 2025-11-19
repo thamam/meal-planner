@@ -69,48 +69,57 @@ async function saveProfile_IMPROVED() {
         return;
     }
 
-    // Use ErrorHandler for async operation
-    const savedUser = await window.ErrorHandler.handleAsync(async () => {
-        if (!window.FirebaseAPI) {
-            throw window.ErrorHandler.createError(
-                'FirebaseAPI is not loaded. Please refresh the page.',
-                'FIREBASE_NOT_LOADED'
-            );
-        }
+    // Try to save user
+    let savedUser = null;
 
+    try {
         console.log('Attempting to save user:', userData);
-        let result;
 
-        if (window.currentUser && window.currentUser.id) {
-            console.log('Updating existing user:', window.currentUser.id);
-            result = await window.FirebaseAPI.updateUser(window.currentUser.id, userData);
+        if (window.FirebaseAPI) {
+            // Use Firebase if available
+            if (window.currentUser && window.currentUser.id) {
+                console.log('Updating existing user:', window.currentUser.id);
+                savedUser = await window.FirebaseAPI.updateUser(window.currentUser.id, userData);
+            } else {
+                console.log('Creating new user');
+                savedUser = await window.FirebaseAPI.createUser(userData);
+            }
+            window.currentUser = { ...userData, id: savedUser.id };
         } else {
-            console.log('Creating new user');
-            result = await window.FirebaseAPI.createUser(userData);
+            // Fallback: Save locally without Firebase
+            console.log('FirebaseAPI not available, saving locally');
+            const localId = window.currentUser?.id || 'local-user-' + Date.now();
+            window.currentUser = { ...userData, id: localId };
         }
 
-        return result;
-    }, null, true);
-
-    if (!savedUser) {
-        // Error already shown by ErrorHandler
+        console.log('User saved successfully:', window.currentUser);
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        if (window.Modal) {
+            await window.Modal.error('Error saving profile: ' + error.message);
+        }
         if (window.Sounds) window.Sounds.playError();
         return;
     }
 
-    console.log('User saved successfully:', savedUser);
-
-    window.currentUser = { ...userData, id: savedUser.id };
-
-    // Save to localStorage with error handling
-    window.ErrorHandler.handleSync(() => {
+    // Save to localStorage (both keys for compatibility)
+    try {
         localStorage.setItem('mealPlannerUser', JSON.stringify(window.currentUser));
-    }, null, false);
+        localStorage.setItem('currentUser', JSON.stringify(window.currentUser));
+    } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+    }
 
-    // Load user-specific data
-    await window.loadCustomFoods();
-    await window.loadUserRules();
-    window.renderCategorizedFoodPalette();
+    // Load user-specific data (may fail without Firebase, but profile is saved)
+    try {
+        if (window.FirebaseAPI) {
+            await window.loadCustomFoods();
+            await window.loadUserRules();
+        }
+        window.renderCategorizedFoodPalette();
+    } catch (loadError) {
+        console.warn('Could not load user data:', loadError);
+    }
 
     window.updateUserDisplay();
     window.closeProfileModal();

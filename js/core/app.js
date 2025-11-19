@@ -227,15 +227,17 @@ function loadUserFromStorage() {
 }
 
 function updateUserDisplay() {
-    if (currentUser) {
+    // Use either local or window currentUser (for app-improvements.js compatibility)
+    const user = currentUser || window.currentUser;
+    if (user) {
         const userName = document.getElementById('userName');
         const userAge = document.getElementById('userAge');
         const avatarDisplay = document.getElementById('avatarDisplay');
         const userInfo = document.getElementById('userInfo');
 
-        if (userName) userName.textContent = currentUser.name;
-        if (userAge) userAge.textContent = currentUser.age;
-        if (avatarDisplay) avatarDisplay.textContent = currentUser.avatar;
+        if (userName) userName.textContent = user.name;
+        if (userAge) userAge.textContent = user.age;
+        if (avatarDisplay) avatarDisplay.textContent = user.avatar;
         if (userInfo) userInfo.classList.remove('hidden');
     }
 }
@@ -291,8 +293,12 @@ async function saveProfile() {
     
     // Save sound preferences
     let preferences = '{}';
-    if (window.Sounds) {
-        preferences = Sounds.saveSoundPreferences(currentUser) || '{}';
+    if (window.Sounds && typeof Sounds.saveSoundPreferences === 'function') {
+        try {
+            preferences = Sounds.saveSoundPreferences(currentUser) || '{}';
+        } catch (e) {
+            console.warn('Could not save sound preferences:', e);
+        }
     }
     
     // Create or update user
@@ -304,41 +310,50 @@ async function saveProfile() {
     };
     
     try {
-        // Check if FirebaseAPI is available
-        if (!window.FirebaseAPI) {
-            throw new Error('FirebaseAPI is not loaded. Please refresh the page.');
-        }
-        
         console.log('Attempting to save user:', userData);
         let savedUser;
-        
-        if (currentUser && currentUser.id) {
-            // Update existing user
-            console.log('Updating existing user:', currentUser.id);
-            savedUser = await FirebaseAPI.updateUser(currentUser.id, userData);
+
+        // Check if FirebaseAPI is available
+        if (window.FirebaseAPI) {
+            if (currentUser && currentUser.id) {
+                // Update existing user
+                console.log('Updating existing user:', currentUser.id);
+                savedUser = await FirebaseAPI.updateUser(currentUser.id, userData);
+            } else {
+                // Create new user
+                console.log('Creating new user');
+                savedUser = await FirebaseAPI.createUser(userData);
+            }
+
+            console.log('User saved successfully:', savedUser);
+            currentUser = { ...userData, id: savedUser.id };
         } else {
-            // Create new user
-            console.log('Creating new user');
-            savedUser = await FirebaseAPI.createUser(userData);
+            // Fallback: Save locally without Firebase
+            console.log('FirebaseAPI not available, saving locally');
+            const localId = currentUser?.id || 'local-user-' + Date.now();
+            currentUser = { ...userData, id: localId };
         }
-        
-        console.log('User saved successfully:', savedUser);
-        
-        currentUser = { ...userData, id: savedUser.id };
-        
-        // Save to localStorage
+
+        // Save to localStorage (both keys for compatibility)
         localStorage.setItem('mealPlannerUser', JSON.stringify(currentUser));
-        
-        // Load user-specific data
-        await loadCustomFoods();
-        await loadUserRules();
-        renderCategorizedFoodPalette();
-        
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+        // Close modal and show success - this happens regardless of other loads
         updateUserDisplay();
         closeProfileModal();
-        
         showMessage('👤 Profile saved! Welcome, ' + name + '!', 'success');
         if (window.Sounds) Sounds.playSuccess();
+
+        // Load user-specific data (may fail without Firebase, but profile is saved)
+        try {
+            if (window.FirebaseAPI) {
+                await loadCustomFoods();
+                await loadUserRules();
+            }
+            renderCategorizedFoodPalette();
+        } catch (loadError) {
+            console.warn('Could not load user data:', loadError);
+        }
     } catch (error) {
         console.error('Error saving profile:', error);
         console.error('Error details:', {
@@ -966,14 +981,23 @@ function clearWeek() {
 // Tab Navigation
 // ==========================================
 
-function switchTab(tab) {
+async function switchTab(tab) {
     // Password protection for parent view - ENABLED
     if (tab === 'parent') {
-        const password = prompt('🔒 Parent Password Required:\n\nEnter the password to access Parent View:');
-        if (password !== '1580') {
-            showMessage('❌ Incorrect password!', 'error');
-            if (window.Sounds) Sounds.playError();
-            return; // Don't switch tabs
+        // Use Auth module for proper modal-based authentication
+        if (window.Auth) {
+            const authorized = await window.Auth.requireParentAuth();
+            if (!authorized) {
+                return; // Don't switch tabs
+            }
+        } else {
+            // Fallback if Auth not loaded - check session
+            const session = sessionStorage.getItem('meal_planner_session');
+            if (!session) {
+                showMessage('❌ Authentication required!', 'error');
+                if (window.Sounds) Sounds.playError();
+                return;
+            }
         }
     }
 
