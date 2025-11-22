@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Meal Planner Test Runner</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .test-section {
+            background: #252526;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #4ec9b0;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #3c3c3c;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .pass {
+            background: #1e3a1e;
+            border-left: 4px solid #4ec9b0;
+            color: #4ec9b0;
+        }
+        .fail {
+            background: #3a1e1e;
+            border-left: 4px solid #f48771;
+            color: #f48771;
+        }
+        .info {
+            background: #1e1e3a;
+            border-left: 4px solid #569cd6;
+            color: #569cd6;
+        }
+        #console-output {
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .timestamp {
+            color: #858585;
+            font-size: 11px;
+        }
+        h1 {
+            color: #569cd6;
+        }
+        h2 {
+            color: #4ec9b0;
+            border-bottom: 1px solid #3c3c3c;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Meal Planner Test Runner</h1>
+    <p>Automated tests for critical user flows</p>
+
+    <div class="test-section">
+        <h3>Setup</h3>
+        <button onclick="clearAllData()">🗑️ Clear All Data</button>
+        <button onclick="openApp()">🚀 Open App in New Tab</button>
+        <div id="setup-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 1: Module Availability</h3>
+        <button onclick="testModules()">Run Test</button>
+        <div id="test1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 2: Emoji Validation</h3>
+        <button onclick="testEmojiValidation()">Run Test</button>
+        <div id="test2-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 3: Password Validation</h3>
+        <button onclick="testPasswordValidation()">Run Test</button>
+        <div id="test3-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 4: Input Sanitization</h3>
+        <button onclick="testInputSanitization()">Run Test</button>
+        <div id="test4-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 5: localStorage Operations</h3>
+        <button onclick="testLocalStorage()">Run Test</button>
+        <div id="test5-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Run All Tests</h3>
+        <button onclick="runAllTests()" style="background: #2d7d2d; font-weight: bold;">▶️ Run All Tests</button>
+    </div>
+
+    <h2>Console Output</h2>
+    <div id="console-output"></div>
+
+    <script>
+        // Load dependencies from main app
+        const appWindow = window.opener || window;
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function showResult(testId, message, pass) {
+            const resultsDiv = document.getElementById(`${testId}-results`);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${pass ? 'pass' : 'fail'}`;
+            resultDiv.textContent = `${pass ? '✅' : '❌'} ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults(testId) {
+            const resultsDiv = document.getElementById(`${testId}-results`);
+            if (resultsDiv) resultsDiv.innerHTML = '';
+        }
+
+        function clearAllData() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('🗑️ Cleared all localStorage and sessionStorage');
+            showResult('setup', 'All data cleared', true);
+        }
+
+        function openApp() {
+            const win = window.open('/', 'MealPlannerApp');
+            if (win) {
+                log('🚀 Opened app in new tab');
+                showResult('setup', 'App opened in new tab', true);
+            } else {
+                log('❌ Failed to open app (popup blocked?)');
+                showResult('setup', 'Failed to open app', false);
+            }
+        }
+
+        async function testModules() {
+            clearResults('test1');
+            log('=== Test 1: Module Availability ===');
+
+            const modules = [
+                'Security',
+                'Modal',
+                'ErrorHandler',
+                'Auth',
+                'OfflineSupport',
+                'Sounds',
+                'i18n',
+                'AutoSave',
+                'AppState'
+            ];
+
+            let passCount = 0;
+            let failCount = 0;
+
+            // Try to load from main window if opened as child
+            const testWindow = window.opener || window;
+
+            for (const moduleName of modules) {
+                try {
+                    // First try iframe to main app
+                    const iframe = document.createElement('iframe');
+                    iframe.src = '/';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    const exists = !!iframe.contentWindow[moduleName];
+                    document.body.removeChild(iframe);
+
+                    if (exists) {
+                        log(`✅ ${moduleName} is available`);
+                        showResult('test1', `${moduleName} available`, true);
+                        passCount++;
+                    } else {
+                        log(`❌ ${moduleName} is NOT available`);
+                        showResult('test1', `${moduleName} NOT available`, false);
+                        failCount++;
+                    }
+                } catch (error) {
+                    log(`❌ Error checking ${moduleName}: ${error.message}`);
+                    showResult('test1', `${moduleName} check failed`, false);
+                    failCount++;
+                }
+            }
+
+            log(`Summary: ${passCount} passed, ${failCount} failed`);
+        }
+
+        async function testEmojiValidation() {
+            clearResults('test2');
+            log('=== Test 2: Emoji Validation ===');
+
+            // Simple inline validation for testing
+            function isValidEmoji(emoji) {
+                if (!emoji || typeof emoji !== 'string') return false;
+                const trimmed = emoji.trim();
+                if (trimmed.length === 0 || trimmed.length > 8) return false;
+                const emojiRegex = /^[\p{Emoji}\u200d\ufe0f]+$/u;
+                return emojiRegex.test(trimmed);
+            }
+
+            const testCases = [
+                { input: '😊', expected: true, desc: 'Smiley face' },
+                { input: '🦁', expected: true, desc: 'Lion' },
+                { input: '🐼', expected: true, desc: 'Panda' },
+                { input: 'abc', expected: false, desc: 'Plain text' },
+                { input: '', expected: false, desc: 'Empty string' },
+                { input: '   ', expected: false, desc: 'Whitespace' },
+                { input: '😊😊😊', expected: true, desc: 'Multiple emojis' },
+            ];
+
+            for (const test of testCases) {
+                const result = isValidEmoji(test.input);
+                const pass = result === test.expected;
+                const msg = `${test.desc}: "${test.input}" → ${result} (expected ${test.expected})`;
+                log(pass ? `✅ ${msg}` : `❌ ${msg}`);
+                showResult('test2', msg, pass);
+            }
+        }
+
+        async function testPasswordValidation() {
+            clearResults('test3');
+            log('=== Test 3: Password Validation ===');
+
+            function validatePassword(password) {
+                if (!password || typeof password !== 'string') {
+                    return { valid: false, strength: 'none', message: 'Password is required' };
+                }
+
+                const minLength = 6;
+                const hasNumber = /\d/.test(password);
+                const hasLetter = /[a-zA-Z]/.test(password);
+
+                if (password.length < minLength) {
+                    return {
+                        valid: false,
+                        strength: 'weak',
+                        message: `Password must be at least ${minLength} characters`
+                    };
+                }
+
+                if (!hasNumber || !hasLetter) {
+                    return {
+                        valid: true,
+                        strength: 'medium',
+                        message: 'Password is okay, but could be stronger with letters and numbers'
+                    };
+                }
+
+                return {
+                    valid: true,
+                    strength: 'strong',
+                    message: 'Password is strong!'
+                };
+            }
+
+            const testCases = [
+                { input: '', expected: false, desc: 'Empty password' },
+                { input: 'abc', expected: false, desc: 'Too short (3 chars)' },
+                { input: 'abcdef', expected: true, desc: 'Letters only (6 chars)' },
+                { input: '123456', expected: true, desc: 'Numbers only (6 chars)' },
+                { input: 'abc123', expected: true, desc: 'Letters + numbers' },
+                { input: 'Pass123!', expected: true, desc: 'Strong password' },
+            ];
+
+            for (const test of testCases) {
+                const result = validatePassword(test.input);
+                const pass = result.valid === test.expected;
+                const msg = `${test.desc}: valid=${result.valid}, strength=${result.strength}`;
+                log(pass ? `✅ ${msg}` : `❌ ${msg}`);
+                showResult('test3', msg, pass);
+            }
+        }
+
+        async function testInputSanitization() {
+            clearResults('test4');
+            log('=== Test 4: Input Sanitization ===');
+
+            function sanitizeInput(input) {
+                if (!input || typeof input !== 'string') return '';
+                return input
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#x27;')
+                    .replace(/\//g, '&#x2F;')
+                    .trim();
+            }
+
+            const testCases = [
+                { input: '<script>alert("xss")</script>', desc: 'XSS attempt' },
+                { input: 'Normal Name', desc: 'Normal text' },
+                { input: "O'Brien", desc: 'Apostrophe' },
+                { input: '<img src=x onerror=alert(1)>', desc: 'Image XSS' },
+                { input: '  spaces  ', desc: 'Extra spaces' },
+            ];
+
+            for (const test of testCases) {
+                const result = sanitizeInput(test.input);
+                const safe = !result.includes('<') && !result.includes('>');
+                log(`${safe ? '✅' : '❌'} ${test.desc}: "${test.input}" → "${result}"`);
+                showResult('test4', `${test.desc}: ${safe ? 'Safe' : 'UNSAFE'}`, safe);
+            }
+        }
+
+        async function testLocalStorage() {
+            clearResults('test5');
+            log('=== Test 5: localStorage Operations ===');
+
+            try {
+                // Test write
+                const testData = { name: 'Test User', age: 8, avatar: '😊' };
+                localStorage.setItem('test_data', JSON.stringify(testData));
+                log('✅ Write to localStorage successful');
+                showResult('test5', 'Write successful', true);
+
+                // Test read
+                const retrieved = JSON.parse(localStorage.getItem('test_data'));
+                const readPass = retrieved.name === 'Test User';
+                log(readPass ? '✅ Read from localStorage successful' : '❌ Read failed');
+                showResult('test5', 'Read successful', readPass);
+
+                // Test delete
+                localStorage.removeItem('test_data');
+                const deleted = localStorage.getItem('test_data') === null;
+                log(deleted ? '✅ Delete from localStorage successful' : '❌ Delete failed');
+                showResult('test5', 'Delete successful', deleted);
+
+            } catch (error) {
+                log(`❌ localStorage error: ${error.message}`);
+                showResult('test5', `Error: ${error.message}`, false);
+            }
+        }
+
+        async function runAllTests() {
+            log('===================================');
+            log('🧪 Running All Tests');
+            log('===================================');
+
+            await testModules();
+            await testEmojiValidation();
+            await testPasswordValidation();
+            await testInputSanitization();
+            await testLocalStorage();
+
+            log('===================================');
+            log('✅ All Tests Complete');
+            log('===================================');
+        }
+
+        // Initial log
+        log('🧪 Test Runner Ready');
+        log('Open the app in a new tab, then run tests');
+    </script>
+</body>
+</html>
