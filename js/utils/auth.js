@@ -258,11 +258,6 @@ const Auth = {
      * @returns {Promise<boolean>} Success status
      */
     async requireParentAuth(callback, options = {}) {
-        // TESTING MODE: Skip password authentication
-        // TODO: Re-enable password auth for production
-        if (callback) await callback();
-        return true;
-
         // Check if already authenticated this session
         if (this.isAuthenticated()) {
             if (callback) await callback();
